@@ -188,8 +188,16 @@ public:
 	/** Draw onto an 8-bit screen surface. */
 	virtual void draw(Graphics::Surface &dst) const;
 
+	/** Command 0x11: show a w x h part of the image (0 = all). */
+	virtual void setView(int32 w, int32 h);
+	/** Commands 0x12 / 0x13: scroll the shown part; returns (dy << 16) | dx actually moved. */
+	int32 scrollTo(int32 x, int32 y, bool clamp);
+	int32 scrollBy(int32 dx, int32 dy, bool clamp);
+
 protected:
 	int32 _x = 0, _y = 0, _z = 0;
+	int32 _viewW = 0, _viewH = 0; ///< image +0x70/+0x74 [unverified]
+	int32 _srcX = 0, _srcY = 0;
 	int32 _transparent; ///< +0x5c: palette index drawn transparent, -1 = opaque
 	uint16 _param;      ///< +0x60
 	bool _shown = true; ///< command 5

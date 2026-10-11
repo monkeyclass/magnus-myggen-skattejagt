@@ -173,9 +173,42 @@ void Sprite::handleCommand(Message &msg) {
 		setZ(msg.p1);
 		break;
 	case kCmdSetOffset:
+		// FUN_00481ab0: move by (p1, p2); walking characters use it from
+		// animation frame messages.
+		if (!_loaded)
+			load();
+		_x += msg.p1;
+		_y += msg.p2;
+		break;
 	case kCmdSetClip:
 		debug(2, "Sprite %d: command %d (%d, %d, %d) not implemented", _id, msg.cmd, msg.p1, msg.p2, msg.p3);
 		break;
+	case 0x11:
+		// FUN_00481c60
+		setView(msg.p1, msg.p2);
+		break;
+	case 0x12:
+		// FUN_00481c80
+		msg.result = scrollTo(msg.p1, msg.p2, msg.p3 == 0);
+		break;
+	case 0x13:
+		// FUN_00481d00
+		msg.result = scrollBy(msg.p1, msg.p2, msg.p3 == 0);
+		break;
+	case 0x17:
+		// FUN_004780a0
+		msg.result = (_y << 16) | (_x & 0xffff);
+		break;
+	case 0x18:
+		// FUN_00478090 [unverified]: the image's +0x20.
+		msg.result = _z;
+		break;
+	case 0x19: {
+		// FUN_004780d0: the image size.
+		const Graphics::Surface *surf = getSurface();
+		msg.result = surf ? ((surf->h << 16) | (surf->w & 0xffff)) : 0;
+		break;
+	}
 	case kCmdUsePalette:
 		if (!_loaded)
 			load();
@@ -248,7 +281,31 @@ Common::Rect Sprite::getBounds() const {
 	const Graphics::Surface *s = getSurface();
 	if (!s)
 		return Common::Rect();
-	return Common::Rect(_x, _y, _x + s->w, _y + s->h);
+	int w = _viewW ? MIN<int>(_viewW, s->w - _srcX) : s->w - _srcX;
+	int h = _viewH ? MIN<int>(_viewH, s->h - _srcY) : s->h - _srcY;
+	return Common::Rect(_x, _y, _x + MAX(w, 0), _y + MAX(h, 0));
+}
+
+void Sprite::setView(int32 w, int32 h) {
+	_viewW = MAX(w, 0);
+	_viewH = MAX(h, 0);
+}
+
+int32 Sprite::scrollTo(int32 x, int32 y, bool clamp) {
+	return scrollBy(x - _srcX, y - _srcY, clamp);
+}
+
+int32 Sprite::scrollBy(int32 dx, int32 dy, bool clamp) {
+	const Graphics::Surface *s = getSurface();
+	if (clamp && s) {
+		int maxX = MAX<int>(0, s->w - (_viewW ? _viewW : s->w));
+		int maxY = MAX<int>(0, s->h - (_viewH ? _viewH : s->h));
+		dx = CLIP<int32>(_srcX + dx, 0, maxX) - _srcX;
+		dy = CLIP<int32>(_srcY + dy, 0, maxY) - _srcY;
+	}
+	_srcX += dx;
+	_srcY += dy;
+	return (dy << 16) | (dx & 0xffff);
 }
 
 bool Sprite::hitTest(int x, int y) const {
@@ -261,7 +318,7 @@ bool Sprite::hitTest(int x, int y) const {
 	// Command 0x2c makes the whole bounding box count (+0x54).
 	if (_transparent < 0 || _inputDisabled)
 		return true;
-	return *(const byte *)s->getBasePtr(x - _x, y - _y) != _transparent;
+	return *(const byte *)s->getBasePtr(x - _x + _srcX, y - _y + _srcY) != _transparent;
 }
 
 void Sprite::draw(Graphics::Surface &dst) const {
@@ -277,7 +334,7 @@ void Sprite::draw(Graphics::Surface &dst) const {
 		return;
 
 	for (int y = r.top; y < r.bottom; y++) {
-		const byte *src = (const byte *)s->getBasePtr(r.left - _x, y - _y);
+		const byte *src = (const byte *)s->getBasePtr(r.left - _x + _srcX, y - _y + _srcY);
 		byte *d = (byte *)dst.getBasePtr(r.left, y);
 		if (_transparent < 0) {
 			memcpy(d, src, r.width());
@@ -1087,8 +1144,10 @@ void TextSprite::setText(const Common::String &text) {
 }
 
 void TextSprite::setBox(int32 w, int32 h) {
+	// FUN_0047a920: the box is also the shown part of the text.
 	_boxW = MAX(w, 0);
 	_boxH = MAX(h, 0);
+	setView(_boxW, _boxH);
 	render();
 }
 
@@ -1146,7 +1205,10 @@ void TextSprite::render() {
 		for (uint i = 0; i < lines.size(); i++)
 			w = MAX(w, font->getStringWidth(lines[i]));
 	int textH = lh * lines.size();
-	int h = _boxH ? _boxH : textH;
+	// The whole text; the box shows part of it (scrolled with command 0x13).
+	int h = MAX(textH, _boxH);
+	_srcX = 0;
+	_srcY = 0;
 
 	_surface = new Graphics::Surface();
 	_surface->create(MAX(w, 1), MAX(h, 1), Graphics::PixelFormat::createFormatCLUT8());
