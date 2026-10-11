@@ -11,7 +11,7 @@ This repository contains **no game data**. You need your own copy of the CD.
 | Target | Status |
 |---|---|
 | Linux, Wine 9 | **Works.** Intro, navigation, Danish speech and subtitles, saving and loading verified. See [`linux/INSTALL-LINUX.md`](linux/INSTALL-LINUX.md). |
-| Linux, Proton | Should work the same way (the installer supports `--proton`); not tested yet. |
+| Linux, Proton | **Works.** Tested with GE-Proton10-25 via `install-mm2.sh --proton`: intro, navigation, saving and loading. |
 | ScummVM → Miyoo Mini (OnionOS) | Not started. The game is **not** Macromedia Director (unlike the first game in the series), so it needs a new ScummVM engine. Data formats are mostly decoded; see [`NOTES.md`](NOTES.md). |
 
 ## Which disc

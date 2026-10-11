@@ -96,3 +96,11 @@
   - Lab AVIs: Cinepak 480×360, no audio (ScummVM has `image/codecs/cinepak.cpp`).
   - Screen: 640×480 (640×420 scene + 60 px UI bar), so it fits the Miyoo 640×480 1:1.
 - Rough size: a point-and-click with dozens of rooms, puzzles and minigames, hard-coded in C++, probably 3–6 weeks of RE + engine work.
+
+## 2026-10-11 — Proton verified
+- GE-Proton10-25 (sha512 checked) downloaded from the GitHub release URL. The `releases/latest` page is blocked in the sandbox,
+  but `releases/download/<tag>/<asset>` works. GE-Proton11-x tags exist, but `GE-ProtonX-Y.tar.gz` assets under that name return 404.
+- `linux/install-mm2.sh --proton` → registry lands in `pfx/system.reg` under `Wow6432Node`; virtual desktop set in `user.reg`.
+- Verified under Proton: intro, navigation, save slot 1, wineserver kill + relaunch, load slot 1. Saves are in
+  `pfx/drive_c/ProgramData/IVANOFF/MM2/2.0/`.
+- Still not verified (Wine or Proton): the labyrinth (Cinepak AVIs), minigames, a full playthrough, and the Steam shortcut flow.

@@ -40,17 +40,37 @@ You don't need to run the original InstallShield setup. If you'd rather use it, 
 works under Wine after `wine net start rpcss` and with the Windows version set to XP
 (`winecfg -v winxp`).
 
-## Install with Proton (not tested here)
+## Install with Proton (tested with GE-Proton10-25)
 
-Proton is Wine underneath. The same script works with Proton's own `proton` launcher:
+The same script works with any Proton build's `proton` launcher. Steam's own Proton
+works the same way as GE-Proton:
 
 ```sh
+# GE-Proton, outside Steam:
+#   download GE-ProtonX-Y.tar.gz (+ .sha512sum) from
+#   https://github.com/GloriousEggroll/proton-ge-custom/releases, check it, unpack it
+./install-mm2.sh MM2NORD.iso \
+    --proton ~/proton/GE-Proton10-25/proton \
+    --prefix ~/.local/share/mm2/proton
+
+# or Steam's Proton:
 ./install-mm2.sh MM2NORD.iso \
     --proton ~/.steam/steam/steamapps/common/"Proton - Experimental"/proton \
     --prefix ~/.local/share/mm2/proton
 ```
 
-It prints the exact launch command when it's done.
+It prints the exact launch command when it's done. It looks like this:
+
+```sh
+STEAM_COMPAT_DATA_PATH=~/.local/share/mm2/proton \
+STEAM_COMPAT_CLIENT_INSTALL_PATH=~/.local/share/mm2/proton \
+  ~/proton/GE-Proton10-25/proton run \
+  ~/.local/share/mm2/proton/pfx/drive_c/Program\ Files/Magnus2/mm2run.exe
+```
+
+`STEAM_COMPAT_CLIENT_INSTALL_PATH` normally points at your Steam install. Outside
+Steam any existing directory works. Add `PROTON_LOG=1` to get a
+`steam-<appid>.log` in your home directory if something goes wrong.
 
 To start it from Steam:
 
@@ -79,11 +99,15 @@ To start it from Steam:
   (i.e. `<prefix>/drive_c/ProgramData/IVANOFF/MM2/2.0/`), plus `settings.dat` next to them.
 - Labyrinth videos: Cinepak AVI, 480×360. Wine's built-in `iccvid.dll` decodes them.
 
-## What was verified (Wine 9.0, Xvfb, PulseAudio null sink)
+## What was verified
+
+Tested with Wine 9.0 and with GE-Proton10-25, on Xvfb with a PulseAudio null sink:
+
 
 - Intro FLC animations, Danish speech and subtitles (æ/ø/å render correctly)
 - Navigation (hall → portrait gallery)
 - Options menu (candle icon), save to slot 1, quit, restart, load slot 1
 - Fresh 64-bit prefix, Wine's default Windows 10 mode, **no CD drive mapped**
+- Proton: installed with `--proton`, then intro, navigation, save, a full quit and relaunch, then load
 
 Not verified yet: the labyrinth sequences, the minigames, or a complete playthrough.
