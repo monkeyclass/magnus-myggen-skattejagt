@@ -58,8 +58,8 @@ public:
 	VarRef at(int32 key) const;
 	/** +0x44: removes the element of a map variable. */
 	void remove(int32 key);
-	/** +0x0c-+0x1c: comparisons with a number. */
-	bool eq(int32 value) const;
+	/** +0x0c: equal to another variable (compares the values). */
+	bool eq(const VarRef &other) const;
 
 	/** +0x54: v++ (the original returns a copy of the old value, discarded by the game). */
 	void postIncrement() { callCopySlot(0x54); }

@@ -76,8 +76,8 @@ void VarRef::remove(int32 key) {
 	callSlot(0x44, 1, &a);
 }
 
-bool VarRef::eq(int32 value) const {
-	uint32 a = value;
+bool VarRef::eq(const VarRef &other) const {
+	uint32 a = other._addr;
 	return (callSlot(0x0c, 1, &a) & 0xff) != 0;
 }
 
