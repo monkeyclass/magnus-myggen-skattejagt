@@ -94,7 +94,12 @@ public:
 
 	// The commands, as in the original vtable.
 	virtual void load() { _loaded = true; }        // +0x38
-	virtual void unload() { _loaded = false; }     // +0x3c
+	virtual void unload() {                        // +0x3c
+		if (_visible)
+			stop();
+		_visible = false;
+		_loaded = false;
+	}
 	virtual void play(int32 p1, int32 p2, int32 p3) {} // +0x40
 	virtual void stop() {}                         // +0x44
 	virtual void enable(int32 on) {}               // +0x48
@@ -277,6 +282,11 @@ public:
 
 	void handleCommand(Message &msg) override;
 	void load() override;
+	/** FUN_00478d60 */
+	void unload() override {
+		Sprite::unload();
+		_regions.clear();
+	}
 	void play(int32 p1, int32 p2, int32 p3) override;
 	bool hitTest(int x, int y) const override;
 	int32 localCoords(int x, int y) const override { return regionAt(x, y); }

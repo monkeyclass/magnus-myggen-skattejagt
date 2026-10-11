@@ -56,7 +56,8 @@ From the Nordic retail CD (Danish, Norwegian, Swedish and Finnish in one):
 
 - Works: startup, the Ivanoff logo, the intro cut-scene (animations, voices,
   per-frame triggers; Esc skips it), the title, the castle hall with its
-  dialogue, timers, the settings file.
+  dialogue, walking between rooms (hall → portrait gallery), timers, the
+  settings file.
 - Not done yet: text rendering uses ScummVM's GUI font instead of the game's
   fonts; drag and drop; AVI videos (labyrinth); animated sprite cursors; ScummVM
   save/load integration (the game's own save screens use `appdata`).

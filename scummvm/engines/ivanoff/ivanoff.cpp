@@ -186,6 +186,15 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 		} else if (!strcmp(kind, "move")) {
 			_system->warpMouse(x, y);
 			onMouseMove(x, y);
+		} else if (!strcmp(kind, "dump")) {
+			Common::Array<Sprite *> list;
+			collectSprites(list);
+			for (uint i = 0; i < list.size(); i++) {
+				Sprite *sp = list[i];
+				Common::Rect r = sp->getBounds();
+				debug("visible %d.%d type %04x z %d flags %x box %d,%d-%d,%d", sp->getOwner()->getId(), sp->getId(),
+				      sp->getType(), sp->getZ(), sp->getFlags(), r.left, r.top, r.right, r.bottom);
+			}
 		} else if (!strcmp(kind, "esc")) {
 			onKey(Common::KEYCODE_ESCAPE, 27, true);
 			onKey(Common::KEYCODE_ESCAPE, 27, false);
