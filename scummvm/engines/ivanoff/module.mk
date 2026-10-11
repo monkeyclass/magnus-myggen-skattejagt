@@ -11,6 +11,14 @@ MODULE_OBJS = \
 	resources.o \
 	script.o \
 	scripts/base.o \
+	scripts/batch_a.o \
+	scripts/batch_b.o \
+	scripts/batch_c.o \
+	scripts/batch_d.o \
+	scripts/batch_e.o \
+	scripts/batch_f.o \
+	scripts/batch_g.o \
+	scripts/batch_h.o \
 	scripts/items.o \
 	scripts/registry.o \
 	sprite.o \

@@ -173,4 +173,6 @@ void ItemScript::handle(Message &msg) {
 		ObjectScript::handle(msg);
 }
 
+IVANOFF_SCRIPT(ObjectScript) { return new ObjectScript(obj); }
+
 } // End of namespace Ivanoff

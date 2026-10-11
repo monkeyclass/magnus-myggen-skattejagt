@@ -245,6 +245,9 @@ void IvanoffEngine::loadFuzzDictionary() {
 			e.params.push_back(strtol(params.nextToken().c_str(), nullptr, 16));
 		if (!byVtable.contains(vt) || e.msgs.empty())
 			continue;
+		// "fuzz_vtables": only these classes.
+		if (ConfMan.hasKey("fuzz_vtables") && !ConfMan.get("fuzz_vtables").contains(Common::String::format("%x", vt)))
+			continue;
 		for (uint i = 0; i < byVtable[vt].size(); i++) {
 			e.object = byVtable[vt][i];
 			_fuzz.push_back(e);

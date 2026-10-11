@@ -109,6 +109,8 @@ protected:
 	void post(uint16 target, uint16 msg, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0);
 	/** FUN_00476b40 */
 	int32 cmd(uint16 target, int32 command, uint16 child, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0);
+	/** cmd() with a string as p1 (text commands 0xd and 0xf). */
+	int32 cmdString(uint16 target, int32 command, uint16 child, const Common::String &str, int32 p2 = 0, int32 p3 = 0);
 	/** FUN_00477050 */
 	VarRef var(uint16 id);
 	/** FUN_00477060: a variable of another object. */

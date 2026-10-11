@@ -65,6 +65,22 @@ public:
 	void handle(Message &msg) override;
 };
 
+/**
+ * Object 99 (vtable 0x4b45e4, FUN_004532e0), an item that takes the items
+ * 0x62 and 0x64-0x6f; the base of objects 100-103 and others.
+ */
+class Object99 : public ItemScript {
+public:
+	Object99(EmuObject *obj) : ItemScript(obj) {}
+	void handle(Message &msg) override;
+
+private:
+	static bool takes(int32 p1) {
+		int16 item = p1;
+		return (item >= 0x64 && item <= 0x6f) || item == 0x62;
+	}
+};
+
 typedef Script *(*ScriptFactory)(EmuObject *obj);
 
 /** One entry per ported class, by vtable address. */

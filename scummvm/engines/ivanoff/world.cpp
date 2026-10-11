@@ -23,6 +23,7 @@
 #include "common/system.h"
 
 #include "ivanoff/ivanoff.h"
+#include "ivanoff/machine.h"
 #include "ivanoff/sprite.h"
 #include "ivanoff/world.h"
 
@@ -281,7 +282,14 @@ int32 World::deliverCommand(GameObject *from, Message &msg) {
 	if (msg.target == kSelf)
 		msg.target = from ? from->getId() : kBroadcast;
 	msg.mode = 2;
-	debug(4, "cmd %d -> %d.%d (%d, %d, %d)", msg.cmd, msg.target, msg.msg, msg.p1, msg.p2, msg.p3);
+	if (gDebugLevel >= 4) {
+		// Text commands pass strings: print them, not their (varying) addresses.
+		Emu::Memory &mem = g_engine->_machine->mem();
+		if ((msg.cmd == 0xd || msg.cmd == 0xf) && msg.p1 && mem.isMapped(msg.p1))
+			debug(4, "cmd %d -> %d.%d (\"%s\", %d, %d)", msg.cmd, msg.target, msg.msg, mem.readString(msg.p1, 256).c_str(), msg.p2, msg.p3);
+		else
+			debug(4, "cmd %d -> %d.%d (%d, %d, %d)", msg.cmd, msg.target, msg.msg, msg.p1, msg.p2, msg.p3);
+	}
 
 	if (msg.target == kBroadcast) {
 		for (uint i = 0; i < _order.size(); i++) {

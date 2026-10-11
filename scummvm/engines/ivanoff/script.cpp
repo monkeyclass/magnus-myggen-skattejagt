@@ -144,6 +144,15 @@ int32 Script::cmd(uint16 target, int32 command, uint16 child, int32 p1, int32 p2
 	return m.result;
 }
 
+int32 Script::cmdString(uint16 target, int32 command, uint16 child, const Common::String &str, int32 p2, int32 p3) {
+	Emu::Memory &mem = _machine->mem();
+	uint32 a = mem.alloc(str.size() + 1);
+	mem.write(a, str.c_str(), str.size() + 1);
+	int32 result = cmd(target, command, child, (int32)a, p2, p3);
+	mem.free(a);
+	return result;
+}
+
 VarRef Script::var(uint16 id) {
 	return VarRef(_machine, _machine->cpu().call(kVarLookup, self(), id));
 }

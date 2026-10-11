@@ -125,59 +125,49 @@ public:
 	}
 };
 
-/** Object 99 (vtable 0x4b45e4, FUN_004532e0): takes the items 0x62 and 0x64-0x6f. */
-class Object99 : public ItemScript {
-public:
-	Object99(EmuObject *obj) : ItemScript(obj) {}
-	void handle(Message &msg) override {
-		switch (msg.msg) {
-		case 0x3b:
-			msg.result = 1;
-			break;
-		case 0x3c:
-			send(kSpeech, kMsgSay, 0x8220825);
-			break;
-		case 0x43:
-			msg.result = takes(msg.p1);
-			break;
-		case kMsgDropTest:
-		case kMsgDropTestAlt:
-			msg.result = msg.p2 == var(0x30).get() && takes(msg.p1);
-			break;
-		case kMsgDrop:
-			if (takes(msg.p1)) {
-				uint16 item = msg.p1;
-				cmd(msg.p1, kCmdStop, var(0x30, item).get());
-				setCursor(0);
-				if (msg.p2 == var(0x30).get()) {
-					cmd(kSelf, kCmdStop, var(0x30).get());
-					var(0x2d).set(0);
-					if ((uint16)msg.p1 == 0x62) {
-						var(0x34, 0x62).getString(0x54, 0);
-					} else {
-						var(0x2d, msg.p1).set(0);
-						var(0x2d, 0x62).set(1);
-						var(0x34, 0x62).add(2);
-						var(0x31, msg.p1).set(1);
-					}
-					var(0x31).set(1);
-					send(10, 0x20);
+void Object99::handle(Message &msg) {
+	// FUN_004532e0
+	switch (msg.msg) {
+	case 0x3b:
+		msg.result = 1;
+		break;
+	case 0x3c:
+		send(kSpeech, kMsgSay, 0x8220825);
+		break;
+	case 0x43:
+		msg.result = takes(msg.p1);
+		break;
+	case kMsgDropTest:
+	case kMsgDropTestAlt:
+		msg.result = msg.p2 == var(0x30).get() && takes(msg.p1);
+		break;
+	case kMsgDrop:
+		if (takes(msg.p1)) {
+			uint16 item = msg.p1;
+			cmd(msg.p1, kCmdStop, var(0x30, item).get());
+			setCursor(0);
+			if (msg.p2 == var(0x30).get()) {
+				cmd(kSelf, kCmdStop, var(0x30).get());
+				var(0x2d).set(0);
+				if ((uint16)msg.p1 == 0x62) {
+					var(0x34, 0x62).getString(0x54, 0);
+				} else {
+					var(0x2d, msg.p1).set(0);
+					var(0x2d, 0x62).set(1);
+					var(0x34, 0x62).add(2);
+					var(0x31, msg.p1).set(1);
 				}
+				var(0x31).set(1);
+				send(10, 0x20);
 			}
-			break;
-		default:
-			break;
 		}
-		if (msg.handled == 0)
-			ItemScript::handle(msg);
+		break;
+	default:
+		break;
 	}
-
-private:
-	static bool takes(int32 p1) {
-		int16 item = p1;
-		return (item >= 0x64 && item <= 0x6f) || item == 0x62;
-	}
-};
+	if (msg.handled == 0)
+		ItemScript::handle(msg);
+}
 
 /** Object 100 (vtable 0x4b45c4, FUN_00452b50), a kind of object 99. */
 class Object100 : public Object99 {
