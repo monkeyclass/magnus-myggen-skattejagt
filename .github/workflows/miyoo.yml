@@ -35,10 +35,17 @@ jobs:
         run: curl -sSL "$TOOLCHAIN_URL" | sudo tar -C /opt -xJ
 
       - name: Get ScummVM
+        uses: actions/checkout@v4
+        with:
+          repository: scummvm/scummvm
+          ref: ${{ env.SCUMMVM_REF }}
+          path: scummvm
+          fetch-depth: 1
+
+      - name: Show versions
         run: |
-          git init -q scummvm
-          git -C scummvm fetch -q --depth 1 https://github.com/scummvm/scummvm.git "$SCUMMVM_REF"
-          git -C scummvm checkout -q FETCH_HEAD
+          git -C scummvm log -1 --oneline
+          ls /opt/miyoomini-toolchain/usr/bin/arm-linux-gnueabihf-g++
 
       - name: Build
         run: miyoo/build.sh scummvm dist
