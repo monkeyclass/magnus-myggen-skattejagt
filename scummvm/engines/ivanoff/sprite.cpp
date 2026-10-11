@@ -106,6 +106,11 @@ void Child::handleCommand(Message &msg) {
 	}
 }
 
+uint16 Child::resourceId() const {
+	uint16 alt = _addr ? g_engine->_machine->mem().r16(_addr + 0x50) : _altResource;
+	return alt ? alt : _id;
+}
+
 bool Child::testBit(uint16 bit) const {
 	// FUN_00477910: the type counts as a tag.
 	if (bit == _type)
@@ -296,26 +301,59 @@ Bitmap::~Bitmap() {
 	unload();
 }
 
+void Bitmap::handleCommand(Message &msg) {
+	// FUN_00477bd0
+	if (msg.cmd == 0x35) {
+		Common::Array<byte> buf(msg.p2);
+		if (msg.p2 > 0)
+			g_engine->_machine->mem().read(msg.p1, &buf[0], msg.p2);
+		Common::MemoryReadStream stream(buf.data(), buf.size());
+		loadFromMemory(stream);
+		return;
+	}
+	Sprite::handleCommand(msg);
+}
+
+bool Bitmap::decode(Common::SeekableReadStream &stream) {
+	Image::BitmapDecoder decoder;
+	if (!decoder.loadStream(stream))
+		return false;
+	if (_surface) {
+		_surface->free();
+		delete _surface;
+	}
+	_surface = new Graphics::Surface();
+	_surface->copyFrom(*decoder.getSurface());
+	const Graphics::Palette &pal = decoder.getPalette();
+	memset(_palette, 0, sizeof(_palette));
+	memcpy(_palette, pal.data(), MIN<uint>(pal.size(), 256) * 3);
+	_revision++;
+	return true;
+}
+
+void Bitmap::loadFromMemory(Common::SeekableReadStream &stream) {
+	if (_loaded)
+		return;
+	if (decode(stream))
+		_loaded = true;
+	else
+		warning("Bitmap %d: can't decode the image in memory", _id);
+}
+
 void Bitmap::load() {
 	// FUN_00477c00
 	if (_loaded)
 		return;
-	uint16 res = _altResource ? _altResource : _id;
+	uint16 res = resourceId();
 	Common::SeekableReadStream *stream = g_engine->_resources.get(res);
 	if (!stream) {
 		warning("Bitmap %d: no resource", res);
 		return;
 	}
-	Image::BitmapDecoder decoder;
-	if (decoder.loadStream(*stream)) {
-		_surface = new Graphics::Surface();
-		_surface->copyFrom(*decoder.getSurface());
-		const Graphics::Palette &pal = decoder.getPalette();
-		memcpy(_palette, pal.data(), MIN<uint>(pal.size(), 256) * 3);
+	if (decode(*stream))
 		_loaded = true;
-	} else {
+	else
 		warning("Bitmap %d: can't decode", res);
-	}
 	delete stream;
 }
 
@@ -381,7 +419,7 @@ void Anim::handleCommand(Message &msg) {
 }
 
 Video::VideoDecoder *Anim::openDecoder() {
-	uint16 res = _altResource ? _altResource : _id;
+	uint16 res = resourceId();
 	Common::SeekableReadStream *stream = g_engine->_resources.get(res);
 	if (!stream) {
 		warning("Anim %d: no resource", res);
@@ -649,7 +687,7 @@ void Hotspot::load() {
 	// FUN_00478ba0 / FUN_004785c0
 	if (_loaded)
 		return;
-	uint16 res = _altResource ? _altResource : _id;
+	uint16 res = resourceId();
 	Common::SeekableReadStream *s = g_engine->_resources.get(res);
 	if (!s) {
 		warning("Hotspot %d: no resource", res);
@@ -784,6 +822,19 @@ bool Hotspot::hitTest(int x, int y) const {
 	return anyRegionContains(x, y);
 }
 
+Common::Array<Common::Point> Hotspot::regionPoints() const {
+	Common::Array<Common::Point> pts;
+	for (uint i = 0; i < _regions.size(); i++) {
+		const Common::Rect &b = _regions[i].bounds;
+		// The centre, or the first vertex area for odd shapes.
+		Common::Point c((b.left + b.right) / 2, (b.top + b.bottom) / 2);
+		if (!_regions[i].contains(c.x, c.y) && !_regions[i].points.empty())
+			c = _regions[i].points[0];
+		pts.push_back(c);
+	}
+	return pts;
+}
+
 bool Hotspot::anyRegionContains(int x, int y) const {
 	for (uint i = 0; i < _regions.size(); i++)
 		if (_regions[i].contains(x, y))
@@ -826,7 +877,7 @@ void Sound::play(int32 p1, int32 p2, int32 p3) {
 	// FUN_004792e0: does nothing if the sound is already playing.
 	if (isPlaying())
 		return;
-	uint16 res = _altResource ? _altResource : _id;
+	uint16 res = resourceId();
 	Common::SeekableReadStream *s = g_engine->_resources.get(res);
 	if (!s) {
 		warning("Sound %d: no resource", res);
@@ -914,7 +965,7 @@ void TextResource::handleCommand(Message &msg) {
 void TextResource::load() {
 	if (_loaded)
 		return;
-	_text = g_engine->_resources.getText(_altResource ? _altResource : _id);
+	_text = g_engine->_resources.getText(resourceId());
 	_loaded = true;
 }
 
@@ -1100,10 +1151,12 @@ void TextSprite::render() {
 	_surface = new Graphics::Surface();
 	_surface->create(MAX(w, 1), MAX(h, 1), Graphics::PixelFormat::createFormatCLUT8());
 	_surface->fillRect(Common::Rect(_surface->w, _surface->h), _bg < 0 ? 0xfa : _bg);
-	// [unverified] Vertical placement by mode: 1 centred, others at the top.
-	int y = (_mode == 1 && h > textH) ? (h - textH) / 2 : 0;
+	// [unverified] The mode (+0xc8) aligns the lines: 0 left, 1 centred,
+	// 2 right; text is placed at the top of the box.
+	Graphics::TextAlign align = _mode == 1 ? Graphics::kTextAlignCenter :
+	                            _mode == 2 ? Graphics::kTextAlignRight : Graphics::kTextAlignLeft;
 	for (uint i = 0; i < lines.size(); i++)
-		font->drawString(_surface, lines[i], 0, y + i * lh, _surface->w, _fg, Graphics::kTextAlignLeft);
+		font->drawString(_surface, lines[i], 0, i * lh, _surface->w, _fg, align);
 }
 
 // --- VideoSprite (FUN_0047af30) ---

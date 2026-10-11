@@ -143,6 +143,8 @@ private:
 	void runDebugEvents(uint32 now);
 	uint32 _debugStart = 0;
 	int _debugEventIndex = 0;
+	int _crawlLeft = 0, _crawlIndex = 0;
+	uint32 _crawlNext = 0, _crawlInterval = 2500;
 
 	uint32 _lastSignature = 0;
 	bool _forceRedraw = true;

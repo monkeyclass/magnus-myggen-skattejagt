@@ -135,6 +135,8 @@ protected:
 	bool _visible = false;
 	bool _disabled = false;
 	uint16 _altResource = 0; ///< +0x50: load this resource instead of _id
+	/** The resource to load: +0x50, which the game sets directly in the child's memory, or the id. */
+	uint16 resourceId() const;
 	Common::Array<uint16> _bits; ///< FUN_00477860 flag bits (commands 0x29-0x2b)
 
 	/** Sends the "done" notification for play() parameter p1 (FUN_0047fab0). */
@@ -199,15 +201,22 @@ public:
 	Bitmap(uint16 id, int32 transparent, uint32 flags, int32 mode);
 	~Bitmap() override;
 
+	void handleCommand(Message &msg) override;
+	/** Command 0x35 (FUN_00477de0): load a BMP from memory instead of the resources. */
+	void loadFromMemory(Common::SeekableReadStream &stream);
+
 	void load() override;
 	void unload() override;
 
 	const Graphics::Surface *getSurface() const override { return _surface; }
 	const byte *getPalette() const override { return _palette; }
+	uint32 getRevision() const override { return _revision; }
 
 private:
+	bool decode(Common::SeekableReadStream &stream);
 	Graphics::Surface *_surface = nullptr;
 	byte _palette[256 * 3];
+	uint32 _revision = 0;
 };
 
 /** FUN_00478140: an animation (FLC). */
@@ -310,6 +319,8 @@ public:
 	/** Command 0x17: the centre of region id (or all regions if all == 0), as y << 16 | x. */
 	int32 regionCenter(int32 all, int32 id) const;
 	bool anyRegionContains(int x, int y) const;
+	/** For testing: a point inside each region. */
+	Common::Array<Common::Point> regionPoints() const;
 
 private:
 	Common::Array<HotspotRegion> _regions;

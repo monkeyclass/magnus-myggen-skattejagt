@@ -172,6 +172,39 @@ Common::Error IvanoffEngine::run() {
 void IvanoffEngine::runDebugEvents(uint32 now) {
 	if (!ConfMan.hasKey("debug_events"))
 		return;
+	if (_crawlLeft > 0 && now >= _crawlNext) {
+		// Click the next clickable thing of the room (not the tool bar, objects 8-13).
+		Common::Array<Sprite *> list;
+		collectSprites(list);
+		Common::Array<Common::Point> targets;
+		for (uint i = 0; i < list.size(); i++) {
+			Sprite *sp = list[i];
+			uint16 owner = sp->getOwner()->getId();
+			if (!(sp->getFlags() & kFlagClick) || (owner >= 8 && owner <= 13))
+				continue;
+			if (Hotspot *h = dynamic_cast<Hotspot *>(sp)) {
+				Common::Array<Common::Point> pts = h->regionPoints();
+				for (uint j = 0; j < pts.size(); j++)
+					targets.push_back(pts[j]);
+			} else {
+				Common::Rect r = sp->getBounds();
+				if (!r.isEmpty())
+					targets.push_back(Common::Point((r.left + r.right) / 2, (r.top + r.bottom) / 2));
+			}
+		}
+		if (targets.empty()) {
+			debug(1, "Crawl: nothing to click");
+		} else {
+			// Random targets, so that runs wander through different rooms.
+			Common::Point p = targets[_randomSource.getRandomNumber(targets.size() - 1)];
+			debug(1, "Crawl: click %d,%d (%d targets)", p.x, p.y, targets.size());
+			onMouseMove(p.x, p.y);
+			onButton(p.x, p.y, true, false);
+			onButton(p.x, p.y, false, false);
+		}
+		_crawlLeft--;
+		_crawlNext = now + _crawlInterval;
+	}
 	if (_debugStart == 0)
 		_debugStart = now;
 	Common::String all = ConfMan.get("debug_events");
@@ -197,6 +230,10 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 		} else if (!strcmp(kind, "move")) {
 			_system->warpMouse(x, y);
 			onMouseMove(x, y);
+		} else if (!strcmp(kind, "crawl")) {
+			_crawlLeft = x;
+			_crawlInterval = y ? y : 2500;
+			_crawlNext = now;
 		} else if (!strcmp(kind, "room")) {
 			Message m(kGameState, 0, kMsgGotoRoom, x);
 			_world->deliver(nullptr, m);
