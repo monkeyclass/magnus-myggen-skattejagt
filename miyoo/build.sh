@@ -11,6 +11,8 @@ set -eu
 
 src=$(cd "$1" && pwd)
 out=${2:-dist}
+mkdir -p "$out"
+out=$(cd "$out" && pwd)
 here=$(cd "$(dirname "$0")" && pwd)
 tc=/opt/miyoomini-toolchain
 [ -d "$tc" ] || { echo "error: $tc is missing" >&2; exit 1; }
@@ -42,4 +44,5 @@ cp "$sysroot/libfreetype.so.6" "$app/lib/"
 cp "$sysroot/libpng16.so.16" "$app/lib/"
 cp "$sysroot/libz.so.1" "$app/lib/"
 cp app/launch.sh app/config.json app/README.txt "$app/"
+cp app/PUT_GAME_FILES_HERE.txt "$app/game/"
 echo "Done: $app ($(du -sh "$app" | cut -f1)). Add the game files to $app/game."

@@ -1,0 +1,2 @@
+Copy the game files here: MM2.DAT, MM2.IDX, the language folder (DK/, N/, S/ or SF/), LAB/
+and mm2run.exe. See ../README.txt, or use prepare-game.sh from the project.

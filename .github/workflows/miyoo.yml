@@ -1,0 +1,63 @@
+# Builds the Onion OS app for the Miyoo Mini (ScummVM with the ivanoff engine).
+# Every push and pull request uploads the zip as a workflow artifact; a pushed
+# tag v* also publishes it as a GitHub release.
+name: Miyoo Mini build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # The ScummVM commit the engine was tested with (master, 2026-10-10).
+  SCUMMVM_REF: 133399506c5609ae6ff33f3ab0b9b1aaf530c010
+  TOOLCHAIN_URL: https://github.com/shauninman/miyoomini-toolchain-buildroot/releases/download/v0.0.3/miyoomini-toolchain.tar.xz
+
+jobs:
+  miyoo:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the Miyoo Mini toolchain
+        id: toolchain
+        uses: actions/cache@v4
+        with:
+          path: /opt/miyoomini-toolchain
+          key: miyoomini-toolchain-v0.0.3
+
+      - name: Install the toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        run: curl -sSL "$TOOLCHAIN_URL" | sudo tar -C /opt -xJ
+
+      - name: Get ScummVM
+        run: |
+          git init -q scummvm
+          git -C scummvm fetch -q --depth 1 https://github.com/scummvm/scummvm.git "$SCUMMVM_REF"
+          git -C scummvm checkout -q FETCH_HEAD
+
+      - name: Build
+        run: miyoo/build.sh scummvm dist
+
+      - name: Zip
+        run: |
+          cd dist
+          zip -qr ../MagnusMyggen2-OnionOS.zip App
+          cd ..
+          unzip -l MagnusMyggen2-OnionOS.zip | tail -1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MagnusMyggen2-OnionOS
+          path: MagnusMyggen2-OnionOS.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: MagnusMyggen2-OnionOS.zip
+          body_path: miyoo/RELEASE.md

@@ -4,7 +4,12 @@ The game runs in ScummVM with this project's `ivanoff` engine
 ([`scummvm/`](../scummvm/README.md)), built for the Miyoo Mini and packaged as an
 Onion OS app. You need the **Nordic retail CD (2002)**, or an image of it.
 
-## 1. Build the app (on Linux)
+## 1. Get the app
+
+Download `MagnusMyggen2-OnionOS.zip` from the project's
+[releases](https://github.com/monkeyclass/magnus-myggen-skattejagt/releases). It is built by
+GitHub Actions (`.github/workflows/miyoo.yml`); each push also leaves the zip as a workflow
+artifact. Or build it yourself on Linux:
 
 1. Install the Miyoo Mini toolchain (1.5 GB unpacked):
 
