@@ -183,6 +183,61 @@ See `tools/mm2pack.py`. `mm2.dat` holds BMP (8-bit), FLC, WAV and `.HSP`. The la
 `<LANG>/mm2lng.dat` holds subtitles (cp1252) and voice WAVs. Labyrinth videos are separate
 Cinepak AVIs in `Lab/`.
 
+Both indexes are `{u32 id, u32 offset, u32 size}` records. `mm2.idx` starts with a u32
+count (1439); ids below it are in `mm2.dat`, all others in the language pack
+(`FUN_00480f20`). `mm2lng.idx` has no count.
+
+`.HSP`: `".HSP"`, u32 count, then per region `{u32 id, u32 type, u32 n, n × {i32 x, i32 y}}`;
+type 0 rectangle, 1 ellipse (two corners), 2 polygon (alternate fill).
+
+## Findings from the ScummVM engine
+
+Verified by running the game logic against the native implementation in
+[`scummvm/engines/ivanoff`](../scummvm/engines/ivanoff).
+
+**Child commands** (in addition to the table above):
+
+| Cmd | Meaning |
+|---|---|
+| 8 | move by (p1, p2); walking characters get it from animation frame messages |
+| 9 | (frame, heap message): send the message each time the animation shows the frame; message 0 removes the frame's messages |
+| 0x11 | show a w × h part of the image (text boxes: the box) |
+| 0x12, 0x13 | scroll the shown part to / by (x, y), clamped unless p3; 0x13 returns the applied delta |
+| 0x17 | position, y << 16 \| x (hotspots: centre of region p2, or of all if p1 = 0) |
+| 0x19 | image size, h << 16 \| w |
+| 0x2c | p1 = 0: the whole bounding box counts as a hit (no transparency test) |
+| 0x35 | load a BMP from memory (p1 pointer, p2 size): save thumbnails |
+
+- Child id ≥ 0xfdff in a command means "every child whose type is that, or that carries the
+  tag" (tags are set with command 0x29, `FUN_00477910`).
+- The game writes some child fields directly: `+0x50` (u16) is a resource id to load instead
+  of the child's own (the menu's check marks).
+- Unloading a child hides it first.
+- Sound children: the constructor's parameter is a loop count (1 once, 0 forever).
+
+**More child types**: `0xfe02` (`FUN_00479400`) is a string from the language pack; play(p1)
+shows it in text box p1 = (child << 16) | object. `0xfe04` (`FUN_0047af30`) is an animation
+whose frames come from an AVI file (the labyrinths). `0xfe05` (`FUN_004797f0`) is a text box:
+(fg, bg, font, size in tenths of a point, wrap, mode, style, source, flags), drawn with
+`CFont::CreatePointFont`, mode 0/1/2 aligning the lines [unverified: mode 2 = right].
+Text box commands: 0xd font, 0xe source string child, 0xf literal text, 0x10 colours, 0x11 box.
+
+**Input** (`FUN_0047f2b0`–`FUN_0047f8a0`, `FUN_0047e480`–`FUN_0047e7e0`): the topmost child with a
+matching input flag gets the event; keys go to objects whose `+0x18` has bit 0x10000 (down)
+or 0x20000 (up), or only to the object in world `+0x14` (`FUN_00477240`). Drag and drop has two
+modes: flag 0x80 press-drag-release, 0x100 click to pick up and click to drop (0x300: also
+ask 0x1397). Cursor values without the high bit are sprites of the engine's input object (the
+second argument of the setup routine), drawn at the mouse position.
+
+**Startup**: C++ static initializers (`0x4c6000`–`0x4c612c`), then `FUN_0043f760(world,
+inputObject)`, then message 1 to object 17. The application object (`FUN_0047b5d0`) only holds
+the command line (`+0x70`, searched for "notime").
+
+**Settings and saves**: `C:\...\appdata\settings.dat` is an INI file (`SoundLevel`,
+`SavedGameN`, `SavedGameTimeN`), created with `CREATE_NEW`. Saving (`FUN_0047bea0(file,
+version)`) writes a header record and then every object's variables through an MFC `CFile`;
+loading checks the version first.
+
 ## Save files
 
 See `tools/m2s.py`. Records are `{u16 type, u16 id, u32 len, data}`. The current room is in
