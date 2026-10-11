@@ -1,0 +1,10 @@
+gamedata/
+analysis/
+*.iso
+*.bin
+*.cue
+*.dat
+*.idx
+*.exe
+*.cab
+__pycache__/
