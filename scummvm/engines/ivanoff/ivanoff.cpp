@@ -466,6 +466,7 @@ void IvanoffEngine::render() {
 	}
 	if (sig == _lastSignature && !_paletteDirty && !_forceRedraw) {
 		_system->updateScreen();
+		dumpFrame();
 		return;
 	}
 	_lastSignature = sig;
@@ -484,7 +485,10 @@ void IvanoffEngine::render() {
 	}
 	_system->copyRectToScreen(_screen.getPixels(), _screen.pitch, 0, 0, 640, 480);
 	_system->updateScreen();
+	dumpFrame();
+}
 
+void IvanoffEngine::dumpFrame() {
 	// Debugging aid: "dump_frames=<folder>" writes a screenshot every second.
 	if (ConfMan.hasKey("dump_frames")) {
 		uint32 now = _system->getMillis();
@@ -497,6 +501,7 @@ void IvanoffEngine::render() {
 				Image::writePNG(f, _screen, _palette);
 		}
 	}
+
 }
 
 // --- input ---

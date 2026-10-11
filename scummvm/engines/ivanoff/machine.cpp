@@ -93,7 +93,10 @@ enum EngineFunc {
 	kAppCtor,         // 47b5d0 application object (the engine itself)
 	kSetKeyFocus,     // 477240
 	kRedrawNow,       // 476a40
-	kUnloadChildren   // 476a30 (and its thunk 4771b0)
+	kUnloadChildren,  // 476a30 (and its thunk 4771b0)
+	kWorldSave,       // 47bea0
+	kWorldLoad,       // 47bfa0
+	kQuit             // 477200: post WM_APP+3 (quit) to the main window
 };
 
 static const struct {
@@ -131,7 +134,10 @@ static const struct {
 	{ 0x477240, 4, kSetKeyFocus },
 	{ 0x476a40, 0, kRedrawNow },
 	{ 0x476a30, 0, kUnloadChildren },
-	{ 0x4771b0, 0, kUnloadChildren }
+	{ 0x4771b0, 0, kUnloadChildren },
+	{ 0x47bea0, 8, kWorldSave },
+	{ 0x47bfa0, 8, kWorldLoad },
+	{ 0x477200, 0, kQuit }
 };
 
 // Engine code the interpreter may run: variables, variable containers and
@@ -146,7 +152,10 @@ static const struct {
 	{ 0x477260, 0x477560 }, // variable base class, trivial methods
 	{ 0x477ae0, 0x477b20 }, // trivial methods
 	{ 0x47c0a0, 0x47c4b0 }, // variable container, message
-	{ 0x47c790, 0x47da30 }  // variable classes
+	{ 0x47c790, 0x47dbd0 }, // variable classes (and map variables' save/load)
+	{ 0x477080, 0x4770a0 }, // save/load an object's variables
+	{ 0x4771c0, 0x477200 }, // save/load the game (wrappers)
+	{ 0x48d080, 0x48d7e0 }  // the save file class (MFC CFile)
 };
 
 // Win32 functions the game code may reach, with their argument counts
@@ -244,6 +253,15 @@ static const struct {
 	{ "KERNEL32.DLL!GetLocalTime", 1 },
 	{ "KERNEL32.DLL!GetSystemTime", 1 },
 	{ "KERNEL32.DLL!GetTimeZoneInformation", 1 },
+	{ "KERNEL32.DLL!lstrcatA", 2 },
+	{ "KERNEL32.DLL!lstrcpyA", 2 },
+	{ "KERNEL32.DLL!OpenFile", 3 },
+	{ "KERNEL32.DLL!WinExec", 2 },
+	{ "SHELL32.DLL!ShellExecuteA", 6 },
+	{ "ADVAPI32.DLL!RegQueryValueA", 4 },
+	{ "ADVAPI32.DLL!FreeSid", 1 },
+	{ "KERNEL32.DLL!GetFullPathNameA", 4 },
+	{ "KERNEL32.DLL!GetVolumeInformationA", 8 },
 	{ "USER32.DLL!wsprintfA", 0 },
 	{ "USER32.DLL!CharUpperA", 1 }
 };
@@ -594,6 +612,49 @@ void Machine::importCall(CPU &cpu, const Common::String &name) {
 	} else if (name == "KERNEL32.DLL!GetTimeZoneInformation") {
 		// Local time is what ScummVM reports, so no offset (TIME_ZONE_ID_UNKNOWN).
 		_mem.fill(cpu.arg(0), 0, 172);
+		result = 0;
+	} else if (name == "KERNEL32.DLL!GetFullPathNameA") {
+		// Paths in the game are absolute (C:\MM2\...); relative ones are under C:\MM2.
+		Common::String path = _mem.readString(cpu.arg(0));
+		if (path.size() < 2 || path[1] != ':')
+			path = "C:\\MM2\\" + path;
+		uint32 n = cpu.arg(1), buf = cpu.arg(2);
+		if (n > path.size()) {
+			_mem.writeString(buf, path);
+			if (cpu.arg(3)) {
+				int slash = path.findLastOf('\\');
+				_mem.w32(cpu.arg(3), buf + slash + 1);
+			}
+			result = path.size();
+		} else {
+			result = path.size() + 1;
+		}
+	} else if (name == "KERNEL32.DLL!GetVolumeInformationA") {
+		// Case-preserving, Unicode names: MFC's AfxFullPath then leaves names alone.
+		if (cpu.arg(1) && cpu.arg(2))
+			_mem.writeString(cpu.arg(1), "MM2");
+		if (cpu.arg(3))
+			_mem.w32(cpu.arg(3), 0x12345678);
+		if (cpu.arg(4))
+			_mem.w32(cpu.arg(4), 255);
+		if (cpu.arg(5))
+			_mem.w32(cpu.arg(5), 6); // FS_CASE_IS_PRESERVED | FS_UNICODE_STORED_ON_DISK
+		if (cpu.arg(6) && cpu.arg(7))
+			_mem.writeString(cpu.arg(6), "FAT32");
+		result = 1;
+	} else if (name == "KERNEL32.DLL!lstrcatA") {
+		_mem.writeString(cpu.arg(0), _mem.readString(cpu.arg(0)) + _mem.readString(cpu.arg(1)));
+		result = cpu.arg(0);
+	} else if (name == "KERNEL32.DLL!lstrcpyA") {
+		_mem.writeString(cpu.arg(0), _mem.readString(cpu.arg(1)));
+		result = cpu.arg(0);
+	} else if (name == "SHELL32.DLL!ShellExecuteA" || name == "KERNEL32.DLL!WinExec") {
+		// Web links and helper programs: not available.
+		debug(1, "Machine: %s refused", name.c_str());
+		result = 2; // ERROR_FILE_NOT_FOUND (<= 32: failure)
+	} else if (name == "ADVAPI32.DLL!RegQueryValueA") {
+		result = 2;
+	} else if (name == "ADVAPI32.DLL!FreeSid") {
 		result = 0;
 	} else if (name == "KERNEL32.DLL!GetCurrentThreadId") {
 		result = 1;
@@ -1132,6 +1193,51 @@ void Machine::engineCall(CPU &cpu, int id) {
 		}
 		break;
 	}
+	case kQuit:
+		g_engine->quitGame();
+		break;
+	case kWorldSave:
+	case kWorldLoad: {
+		// FUN_0047bea0(file, version) / FUN_0047bfa0(file, version): the file
+		// class and the objects' variable code are the original's.
+		bool save = id == kWorldSave;
+		uint32 name = cpu.arg(0), version = cpu.arg(1);
+		uint32 file = _mem.alloc(0x10);
+		cpu.call(0x48d160, file);
+		uint32 args[3] = { name, save ? 2u : 1u, 0 };
+		if ((cpu.call(0x48d230, file, 2, args) & 0xff) == 0) {
+			cpu.call(_mem.r32(_mem.r32(file)), file, 1);
+			result = 0;
+			break;
+		}
+		uint32 tmp = _mem.alloc(8);
+		bool ok = true;
+		if (save) {
+			_mem.w32(tmp, version);
+			uint32 h[3] = { 0, tmp, 4 };
+			cpu.call(0x48d3f0, file, 3, h);
+		} else {
+			_mem.w32(tmp, 0);
+			_mem.w32(tmp + 4, tmp);
+			uint32 h[3] = { 0, tmp + 4, 0 };
+			cpu.call(0x48d450, file, 3, h);
+			ok = _mem.r32(tmp) == version;
+			if (!ok)
+				warning("Machine: save file version %d, expected %d", _mem.r32(tmp), version);
+		}
+		if (ok) {
+			const Common::Array<GameObject *> &objs = world->getObjects();
+			for (uint i = 0; i < objs.size(); i++) {
+				EmuObject *o = (EmuObject *)objs[i];
+				if (!o->_native)
+					cpu.call(save ? 0x477080 : 0x477090, o->getAddr(), file);
+			}
+		}
+		result = cpu.call(0x48d350, file) & 0xff;
+		cpu.call(_mem.r32(_mem.r32(file)), file, 1);
+		_mem.free(tmp);
+		break;
+	}
 	case kSetKeyFocus:
 		result = world->_keyFocus;
 		world->_keyFocus = cpu.arg(0);
@@ -1170,6 +1276,21 @@ void Machine::childMethod(CPU &cpu, uint32 addr) {
 	bool textRes = c->getType() == kTypeTextRes;
 
 	switch (slot) {
+	case 0x0c:
+		// FUN_00481460: a query about the loaded image; unused by the game logic.
+		result = 0;
+		break;
+	case 0x10:
+		// FUN_00478040: is it shown?
+		if (Sprite *sp = dynamic_cast<Sprite *>(c))
+			result = sp->isShown();
+		break;
+	case 0x2c:
+		result = c->localCoords(m.p1, m.p2);
+		break;
+	case 0x30:
+		// FUN_004780f0: a byte at +0x70, not used by the native drawing.
+		break;
 	case 0x1c: m.cmd = 0x29; break;
 	case 0x20: m.cmd = 0x2a; break;
 	case 0x24: m.cmd = 0x2b; break;

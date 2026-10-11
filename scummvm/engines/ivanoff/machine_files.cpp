@@ -77,7 +77,7 @@ uint32 Machine::openFile(const Common::String &winPath, uint32 access, uint32 di
 
 	Common::SeekableReadStream *in = nullptr;
 	if (!saveName.empty()) {
-		if (disposition != 2 && disposition != 1) // not CREATE_ALWAYS / CREATE_NEW
+		if (disposition != 2) // CREATE_ALWAYS replaces the file without reading it
 			in = g_system->getSavefileManager()->openForLoading(saveName);
 	} else {
 		if (write) {
@@ -116,8 +116,8 @@ uint32 Machine::openFile(const Common::String &winPath, uint32 access, uint32 di
 
 	uint32 h = 0x7000 + _nextHandle++;
 	_files[h] = f;
-	debug(2, "Machine: opened %s (%s) as %x, %d bytes", winPath.c_str(), saveName.empty() ? gamePath.c_str() : saveName.c_str(),
-	      h, f->data.size());
+	debug(2, "Machine: opened %s (%s) as %x, %d bytes, access %x, disposition %d", winPath.c_str(),
+	      saveName.empty() ? gamePath.c_str() : saveName.c_str(), h, f->data.size(), access, disposition);
 	_lastError = 0;
 	return h;
 }
@@ -275,9 +275,25 @@ bool Machine::fileCall(CPU &cpu, const Common::String &name, uint32 &result) {
 			result = cpu.arg(2);
 	} else if (name == "KERNEL32.DLL!WritePrivateProfileStringA") {
 		Common::String value = _mem.readString(cpu.arg(2));
+		debug(2, "WritePrivateProfileString [%s] %s=%s (%s)", _mem.readString(cpu.arg(0)).c_str(),
+		      cpu.arg(1) ? _mem.readString(cpu.arg(1)).c_str() : "(null)", cpu.arg(2) ? value.c_str() : "(null)",
+		      _mem.readString(cpu.arg(3)).c_str());
 		iniSet(_mem.readString(cpu.arg(3)), _mem.readString(cpu.arg(0)), _mem.readString(cpu.arg(1)),
 		       cpu.arg(2) ? &value : nullptr);
 		result = 1;
+	} else if (name == "KERNEL32.DLL!OpenFile") {
+		// Only used to test whether a file exists (OF_EXIST); returns HFILE_ERROR otherwise.
+		uint32 h = openFile(_mem.readString(cpu.arg(0)), 0x80000000, 3);
+		if (h == kInvalidHandle) {
+			result = 0xffffffff;
+		} else {
+			if (!(cpu.arg(2) & 0x4000)) {
+				result = h;
+			} else {
+				closeFile(h);
+				result = 1;
+			}
+		}
 	} else if (name == "KERNEL32.DLL!CreateFileA") {
 		result = openFile(_mem.readString(cpu.arg(0)), cpu.arg(1), cpu.arg(4));
 	} else if (name == "KERNEL32.DLL!GetFileAttributesA") {

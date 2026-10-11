@@ -377,6 +377,8 @@ public:
 	void play(int32 p1, int32 p2, int32 p3) override;
 	const Graphics::Surface *getSurface() const override { return _surface; }
 	uint32 getRevision() const override { return _revision; }
+	/** FUN_0047ab30/0047ab60: text images have no mask, so the whole box counts. */
+	bool hitTest(int x, int y) const override { return isShown() && getBounds().contains(x, y); }
 
 	/** FUN_0047a2f0: show the text of a string child, (child << 16) | object; 0 = none. */
 	void setSource(uint32 source);

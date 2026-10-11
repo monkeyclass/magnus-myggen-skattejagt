@@ -62,5 +62,8 @@ From the Nordic retail CD (Danish, Norwegian, Swedish and Finnish in one):
 - Texts (subtitles, counters, save screen labels) use the Liberation fonts from
   ScummVM's `fonts.dat`, which have Arial's and Times New Roman's metrics; the
   hall's subtitle matches the original (under Wine) pixel for pixel.
-- Not done yet: ScummVM save/load integration (the game's own save screens use
-  `appdata`); playing the whole game through.
+- Saving and loading through the game's own screens works. The files are the
+  original's (`SavedGameN.m2s`, `settings.dat`), stored as ScummVM save files
+  named `<target>-<file>`; a save made by the original game under Wine loads,
+  and the format is the same byte count and records.
+- Not done yet: ScummVM's own save/load dialogs; playing the whole game through.

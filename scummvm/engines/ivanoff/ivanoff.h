@@ -102,6 +102,7 @@ private:
 	void updateChildren(uint32 now);
 	void collectSprites(Common::Array<Sprite *> &list);
 	void render();
+	void dumpFrame();
 
 	Child *hitTest(int x, int y, uint32 mask);
 	void onMouseMove(int x, int y);
