@@ -29,7 +29,9 @@ ROOMEV="8000:esc 20000:click:80,58 23000:click:160,457 36000:crawl:40,3000 16000
 FUZZEV="8000:esc 20000:click:80,58 23000:click:160,457 36000:fuzz:1500,60 40000:crawl:30,3000 140000:quit"
 jobs=""
 i=0
-for r in 22 24 27 34 36 38 43 44 49 52 55 18 40 46 47 15 16 59; do
+# The fuzzing also starts in the rooms of the checked classes (room objects have the room's id).
+FROOMS=$(for v in $(echo $vts | tr ',' ' '); do grep "vt=$v " /home/user/analysis/decomp/rooms.txt | awk '$1 ~ /^[0-9]+$/ && $1 >= 15 && $1 <= 103 {print $1}'; done | sort -un | tr '\n' ' ')
+for r in 22 24 27 34 36 38 43 44 49 52 55 18 40 46 47 15 16 59 $FROOMS; do
 	i=$((i+1))
 	( run room$r $r 1234 "$ROOMEV" native_scripts=$vts ) &
 	( run nf$r $r $((r*7)) "$FUZZEV" native_scripts=$vts fuzz_dict=/home/user/analysis/decomp/fuzz.dict fuzz_vtables=$vts fuzz_vars=$([ $((i%2)) = 0 ] && echo true || echo false) ) &
@@ -38,7 +40,8 @@ for r in 22 24 27 34 36 38 43 44 49 52 55 18 40 46 47 15 16 59; do
 done
 wait
 same=0; diff=0
-for r in 22 24 27 34 36 38 43 44 49 52 55 18 40 46 47 15 16 59; do
+for r in 22 24 27 34 36 38 43 44 49 52 55 18 40 46 47 15 16 59 $FROOMS; do
+	[ -f $det/base$r.log ] || continue
 	if grep -v "^Using configuration\|native logic" $det/base$r.log | cmp -s - $out/room$r.log; then same=$((same+1)); else diff=$((diff+1)); echo "== room $r: first difference (< original, > native):"; grep -v "^Using configuration\|native logic" $det/base$r.log | diff - $out/room$r.log | head -8; fi
 	if cmp -s $out/ef$r.log $out/nf$r.log; then same=$((same+1)); else diff=$((diff+1)); echo "== fuzz $r: first difference (< original, > native):"; diff $out/ef$r.log $out/nf$r.log | head -8; fi
 done
