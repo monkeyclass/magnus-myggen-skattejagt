@@ -9,6 +9,10 @@ MODULE_OBJS = \
 	machine_files.o \
 	metaengine.o \
 	resources.o \
+	script.o \
+	scripts/base.o \
+	scripts/items.o \
+	scripts/registry.o \
 	sprite.o \
 	world.o
 

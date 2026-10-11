@@ -671,7 +671,7 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 	_endFrame = CLIP(_endFrame, 0, last);
 	_playing = true;
 	fireTriggers();
-	_nextFrameTime = g_system->getMillis() + _period;
+	_nextFrameTime = g_engine->getMillis() + _period;
 }
 
 void Anim::stop() {
@@ -705,7 +705,7 @@ void Anim::resume(int32 start, int32 end) {
 		_reverse = end < 0;
 	}
 	_playing = true;
-	_nextFrameTime = g_system->getMillis() + _period;
+	_nextFrameTime = g_engine->getMillis() + _period;
 }
 
 void Anim::update(uint32 now) {
@@ -955,6 +955,13 @@ void Sound::play(int32 p1, int32 p2, int32 p3) {
 
 	// The parameter given at construction is the loop count (FUN_00486c97,
 	// +0x98): 1 plays once, 0 loops forever.
+	if (g_engine->hasVirtualClock()) {
+		uint32 len = audio->getLength().msecs();
+		_endTime = _param == 0 ? 0xffffffff : g_engine->getMillis() + MAX<uint32>(len, 1) * _param;
+		delete audio;
+		_playing = true;
+		return;
+	}
 	Audio::AudioStream *stream = audio;
 	if (_param != 1)
 		stream = Audio::makeLoopingAudioStream(audio, _param);
@@ -965,19 +972,25 @@ void Sound::play(int32 p1, int32 p2, int32 p3) {
 
 void Sound::stop() {
 	// FUN_004793a0: stopping doesn't notify.
-	if (_playing)
+	if (_playing && !g_engine->hasVirtualClock())
 		g_engine->_mixer->stopHandle(_handle);
 	_playing = false;
 	_visible = false;
 	_notify = 0;
 }
 
+bool Sound::isActive() const {
+	if (g_engine->hasVirtualClock())
+		return g_engine->getMillis() < _endTime;
+	return g_engine->_mixer->isSoundHandleActive(_handle);
+}
+
 bool Sound::isPlaying() const {
-	return _playing && g_engine->_mixer->isSoundHandleActive(_handle);
+	return _playing && isActive();
 }
 
 void Sound::update(uint32 now) {
-	if (_playing && !g_engine->_mixer->isSoundHandleActive(_handle)) {
+	if (_playing && !isActive()) {
 		_playing = false;
 		_visible = false;
 		int32 notify = _notify;

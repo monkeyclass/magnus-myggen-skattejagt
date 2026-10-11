@@ -59,6 +59,14 @@ public:
 
 	uint32 getRandomNumber(uint maxNum) { return _randomSource.getRandomNumber(maxNum); }
 
+	/**
+	 * The game's clock in milliseconds. With "virtual_clock=<ms>" it advances
+	 * by that step per main loop iteration instead of following real time,
+	 * which makes runs reproducible (for comparing traces).
+	 */
+	uint32 getMillis() const { return _virtualStep ? _virtualTime : _system->getMillis(); }
+	bool hasVirtualClock() const { return _virtualStep != 0; }
+
 	bool hasFeature(EngineFeature f) const override {
 		return f == kSupportsReturnToLauncher;
 	}
@@ -81,6 +89,12 @@ public:
 
 	/** A font like the GDI one the game asks for (size in tenths of a point at 96 dpi). */
 	const Graphics::Font *getFont(const Common::String &name, int size, int style);
+
+	/**
+	 * Debugging aid: with debug_events, a fault of the game code ends the
+	 * run (traces of runs stay comparable) instead of stopping in the debugger.
+	 */
+	void debugFault(const char *what);
 
 	/** Draws the screen now (the original's synchronous repaint). */
 	void redrawNow() { render(); }
@@ -145,6 +159,18 @@ private:
 	uint32 _debugStart = 0;
 	int _debugEventIndex = 0;
 	int _crawlLeft = 0, _crawlIndex = 0;
+	// "fuzz:count,interval": messages to random objects (see runFuzz()).
+	void loadFuzzDictionary();
+	void runFuzz();
+	struct FuzzEntry {
+		uint16 object;
+		Common::Array<int32> msgs, params;
+		Common::Array<uint32> vars; ///< (object << 16) | id, object 0 = this one
+	};
+	Common::Array<FuzzEntry> _fuzz;
+	int _fuzzLeft = 0;
+	uint32 _fuzzNext = 0, _fuzzInterval = 500;
+	void writeCoverage();
 	uint32 _crawlNext = 0, _crawlInterval = 2500;
 
 	uint32 _lastSignature = 0;
@@ -152,6 +178,9 @@ private:
 
 	uint32 _statsTime = 0;
 	uint64 _statsInstructions = 0;
+
+	uint32 _virtualStep = 0;
+	uint32 _virtualTime = 0;
 
 	uint32 _lastDump = 0;
 	int _dumpCount = 0;

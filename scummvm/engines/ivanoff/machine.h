@@ -22,6 +22,7 @@
 #ifndef IVANOFF_MACHINE_H
 #define IVANOFF_MACHINE_H
 
+#include "common/hash-str.h"
 #include "common/hashmap.h"
 #include "common/path.h"
 #include "common/str.h"
@@ -34,6 +35,7 @@ namespace Ivanoff {
 
 class Child;
 class Machine;
+class Script;
 
 /**
  * A top-level object whose logic is the original game code, run by the
@@ -43,6 +45,7 @@ class Machine;
 class EmuObject : public GameObject {
 public:
 	EmuObject(Machine *m, uint16 id, uint32 addr) : GameObject(id), _machine(m), _addr(addr) {}
+	~EmuObject() override;
 
 	bool accepts(Message &msg) override;
 	void handle(Message &msg) override;
@@ -52,6 +55,10 @@ public:
 	uint32 _childContainer = 0;
 	/** The engine's own object (no game code): ignores messages. */
 	bool _native = false;
+	/** The native logic replacing the original slots 5 and 6, if ported. */
+	Script *_script = nullptr;
+	/** The original class (vtable address). */
+	uint32 getVtable() const;
 
 private:
 	Machine *_machine;
@@ -77,6 +84,8 @@ public:
 	void runInitializers();
 	/** Runs the original setup routine, which creates and registers all objects. */
 	void createObjects();
+	/** Attaches the native logic of the ported classes ("native_scripts": all, none or a list of vtables). */
+	void attachScripts();
 
 	void trap(Emu::CPU &cpu, uint32 addr) override;
 

@@ -324,7 +324,7 @@ void World::startTimer(GameObject *owner, uint16 id, uint32 ms, const Message &m
 	Timer t;
 	t.owner = owner;
 	t.id = id;
-	t.due = g_system->getMillis() + ms;
+	t.due = g_engine->getMillis() + ms;
 	t.msg = msg;
 	_timers.push_back(t);
 }
@@ -339,7 +339,7 @@ void World::stopTimer(GameObject *owner, uint16 id) {
 }
 
 void World::update() {
-	uint32 now = g_system->getMillis();
+	uint32 now = g_engine->getMillis();
 
 	// FUN_0047eb90: fire due timers. Timer messages built with mode 1 are
 	// object messages, mode 2 child commands.

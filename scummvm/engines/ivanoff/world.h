@@ -92,14 +92,31 @@ enum {
 	kCmdUsePalette = 10,
 	kCmdPause = 0xb,
 	kCmdResume = 0xc,
-	kCmdMove = 0x14,
-	kCmdHitTest = 0x17,
+	kCmdSetText = 0xf,        ///< text sprites: p1 = string
+	kCmdSetView = 0x11,
+	kCmdScrollTo = 0x12,
+	kCmdScrollBy = 0x13,
+	kCmdMove = 0x14,          ///< attach to the mouse cursor (drag), p1 = (y << 16) | x grab point
+	kCmdDetach = 0x15,        ///< detach from the mouse cursor
+	kCmdRelPos = 0x16,
+	kCmdHitTest = 0x17,       ///< hotspots: hit test; sprites: position (y << 16) | x
+	kCmdGetPos = 0x17,
+	kCmdGetZ = 0x18,
+	kCmdGetSize = 0x19,
+	kCmdIsLoaded = 0x1a,
 	kCmdIsPlaying = 0x1b,
+	kCmdIsPaused = 0x1d,
+	kCmdIsBusy = 0x20,
+	kCmdIsRunning = 0x21,
 	kCmdSetCursor = 0x24,
 	kCmdGetFrame = 0x25,
 	kCmdGotoFrame = 0x26,
 	kCmdSetFlags = 0x27,
 	kCmdGetFlags = 0x28,
+	kCmdAddTag = 0x29,
+	kCmdRemoveTag = 0x2a,
+	kCmdHasTag = 0x2b,
+	kCmdEnableInput = 0x2c,
 	kCmdHotspotHit = 0x2d
 };
 

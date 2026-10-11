@@ -22,6 +22,7 @@
 #ifndef IVANOFF_EMU_CPU_H
 #define IVANOFF_EMU_CPU_H
 
+#include "common/array.h"
 #include "common/hashmap.h"
 
 #include "ivanoff/emu/memory.h"
@@ -113,6 +114,10 @@ public:
 	}
 
 	uint64 _instructions = 0;
+
+	/** Debugging aid: marks the executed instructions of [base, base + size). */
+	Common::Array<byte> _coverage;
+	uint32 _coverageBase = 0;
 
 private:
 	void run();

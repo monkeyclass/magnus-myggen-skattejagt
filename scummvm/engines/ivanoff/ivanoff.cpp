@@ -19,6 +19,11 @@
  *
  */
 
+// For debugFault(), a debugging aid.
+#define FORBIDDEN_SYMBOL_EXCEPTION_stdout
+#define FORBIDDEN_SYMBOL_EXCEPTION_stderr
+#define FORBIDDEN_SYMBOL_EXCEPTION_exit
+
 #include "common/config-manager.h"
 #include "common/debug.h"
 #include "common/events.h"
@@ -113,6 +118,7 @@ Common::Error IvanoffEngine::run() {
 		return Common::Error(Common::kNoGameDataFoundError, "mm2run.exe");
 	_machine->runInitializers();
 	_machine->createObjects();
+	_machine->attachScripts();
 
 	// The application object starts the game by sending message 1 to
 	// object 17 (FUN_0047b5d0: start object 0x11).
@@ -121,6 +127,13 @@ Common::Error IvanoffEngine::run() {
 
 	CursorMan.showMouse(true);
 	applyCursor(0x80000003);
+
+	if (ConfMan.hasKey("virtual_clock"))
+		_virtualStep = MAX(ConfMan.getInt("virtual_clock"), 0);
+	if (ConfMan.hasKey("coverage")) {
+		_machine->cpu()._coverageBase = 0x401000;
+		_machine->cpu()._coverage.resize(0x75000);
+	}
 
 	while (!shouldQuit()) {
 		Common::Event e;
@@ -149,7 +162,9 @@ Common::Error IvanoffEngine::run() {
 			}
 		}
 
-		uint32 now = _system->getMillis();
+		if (_virtualStep)
+			_virtualTime += _virtualStep;
+		uint32 now = getMillis();
 		if (now - _statsTime >= 5000) {
 			uint64 n = _machine->cpu()._instructions;
 			debug(1, "Interpreter: %u instructions/s", (uint)((n - _statsInstructions) * 1000 / MAX<uint32>(now - _statsTime, 1)));
@@ -161,10 +176,121 @@ Common::Error IvanoffEngine::run() {
 		updateChildren(now);
 		updateCursor();
 		render();
-		_system->delayMillis(10);
+		_system->delayMillis(_virtualStep ? 0 : 10);
 	}
 
+	writeCoverage();
 	return Common::kNoError;
+}
+
+void IvanoffEngine::debugFault(const char *what) {
+	if (!ConfMan.hasKey("debug_events"))
+		return;
+	debug("FAULT: %s", what);
+	writeCoverage();
+	fflush(stdout);
+	fflush(stderr);
+	exit(0);
+}
+
+// Debugging aid: "coverage=<file>" writes the addresses of the executed
+// instructions of the game code, one per line.
+void IvanoffEngine::writeCoverage() {
+	Emu::CPU &cpu = _machine->cpu();
+	if (!ConfMan.hasKey("coverage") || cpu._coverage.empty())
+		return;
+	Common::DumpFile f;
+	if (!f.open(Common::Path(ConfMan.get("coverage"))))
+		return;
+	for (uint i = 0; i < cpu._coverage.size(); i++)
+		if (cpu._coverage[i])
+			f.writeString(Common::String::format("%x\n", cpu._coverageBase + i));
+}
+
+// Debugging aid: "fuzz_dict=<file>" lists, per class of object,
+// "<vtable> <messages> <constants>" (comma separated hex). The "fuzz"
+// debug event then sends random messages built from them to the objects,
+// so that runs with and without the native logic can be compared.
+void IvanoffEngine::loadFuzzDictionary() {
+	_fuzz.clear();
+	Common::File f;
+	if (!ConfMan.hasKey("fuzz_dict") || !f.open(Common::FSNode(Common::Path(ConfMan.get("fuzz_dict"))))) {
+		warning("fuzz: no fuzz_dict");
+		return;
+	}
+	Common::HashMap<uint32, Common::Array<uint16> > byVtable;
+	const Common::Array<GameObject *> &objs = _world->getObjects();
+	for (uint i = 0; i < objs.size(); i++) {
+		EmuObject *o = (EmuObject *)objs[i];
+		if (!o->_native)
+			byVtable[o->getVtable()].push_back(o->getId());
+	}
+	while (!f.eos()) {
+		Common::String line = f.readLine();
+		Common::StringTokenizer tok(line, " ");
+		uint32 vt = strtoul(tok.nextToken().c_str(), nullptr, 16);
+		Common::StringTokenizer msgs(tok.nextToken(), ",");
+		Common::StringTokenizer params(tok.nextToken(), ",");
+		Common::StringTokenizer vars(tok.nextToken(), ",");
+		FuzzEntry e;
+		while (!vars.empty()) {
+			Common::String v = vars.nextToken();
+			uint id = 0, obj = 0;
+			if (sscanf(v.c_str(), "%x:%x", &id, &obj) >= 1)
+				e.vars.push_back((obj << 16) | id);
+		}
+		while (!msgs.empty())
+			e.msgs.push_back(strtol(msgs.nextToken().c_str(), nullptr, 16));
+		while (!params.empty())
+			e.params.push_back(strtol(params.nextToken().c_str(), nullptr, 16));
+		if (!byVtable.contains(vt) || e.msgs.empty())
+			continue;
+		for (uint i = 0; i < byVtable[vt].size(); i++) {
+			e.object = byVtable[vt][i];
+			_fuzz.push_back(e);
+		}
+	}
+	debug(1, "fuzz: %d objects", _fuzz.size());
+}
+
+void IvanoffEngine::runFuzz() {
+	if (_fuzz.empty())
+		return;
+	const FuzzEntry &e = _fuzz[getRandomNumber(_fuzz.size() - 1)];
+	if (!e.vars.empty() && ConfMan.hasKey("fuzz_vars") && ConfMan.getBool("fuzz_vars") && getRandomNumber(3) == 0) {
+		// Set a variable, to reach the branches that depend on the game state.
+		uint32 v = e.vars[getRandomNumber(e.vars.size() - 1)];
+		uint16 obj = v >> 16 ? v >> 16 : e.object;
+		int32 value = getRandomNumber(2);
+		if (getRandomNumber(1) && !e.params.empty())
+			value = e.params[getRandomNumber(e.params.size() - 1)];
+		GameObject *o = _world->get(obj);
+		if (!o)
+			return;
+		Emu::CPU &cpu = _machine->cpu();
+		Emu::Memory &mem = _machine->mem();
+		uint32 var = cpu.call(0x477050, ((EmuObject *)o)->getAddr(), v & 0xffff);
+		debug(1, "fuzz: var %d.%d = %d", obj, v & 0xffff, value);
+		cpu.call(mem.r32(mem.r32(var) + 0x2c), var, (uint32)value);
+		return;
+	}
+	int32 p[3];
+	for (int i = 0; i < 3; i++) {
+		uint r = getRandomNumber(9);
+		int32 c = e.params.empty() ? 0 : e.params[getRandomNumber(e.params.size() - 1)];
+		int32 c2 = e.params.empty() ? 0 : e.params[getRandomNumber(e.params.size() - 1)];
+		if (i > 0 && r < 4)
+			p[i] = 0;
+		else if (r < 6)
+			p[i] = c;
+		else if (r < 8)
+			p[i] = (c << 16) | (c2 & 0xffff);
+		else
+			p[i] = getRandomNumber(3);
+	}
+	Message m(e.object, 0, e.msgs[getRandomNumber(e.msgs.size() - 1)], p[0], p[1], p[2]);
+	debug(1, "fuzz: msg %d -> %d (%d, %d, %d)", m.msg, m.target, m.p1, m.p2, m.p3);
+	_world->deliver(nullptr, m);
 }
 
 // Debugging aid: "debug_events=ms:click:x,y ms:key:c ..." replays input at
@@ -205,6 +331,11 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 		_crawlLeft--;
 		_crawlNext = now + _crawlInterval;
 	}
+	if (_fuzzLeft > 0 && now >= _fuzzNext) {
+		runFuzz();
+		_fuzzLeft--;
+		_fuzzNext = now + _fuzzInterval;
+	}
 	if (_debugStart == 0)
 		_debugStart = now;
 	Common::String all = ConfMan.get("debug_events");
@@ -234,6 +365,11 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 			_crawlLeft = x;
 			_crawlInterval = y ? y : 2500;
 			_crawlNext = now;
+		} else if (!strcmp(kind, "fuzz")) {
+			loadFuzzDictionary();
+			_fuzzLeft = x;
+			_fuzzInterval = y ? y : 500;
+			_fuzzNext = now;
 		} else if (!strcmp(kind, "room")) {
 			Message m(kGameState, 0, kMsgGotoRoom, x);
 			_world->deliver(nullptr, m);
@@ -249,6 +385,8 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 		} else if (!strcmp(kind, "esc")) {
 			onKey(Common::KEYCODE_ESCAPE, 27, true);
 			onKey(Common::KEYCODE_ESCAPE, 27, false);
+		} else if (!strcmp(kind, "quit")) {
+			quitGame();
 		}
 	}
 }
@@ -491,7 +629,7 @@ void IvanoffEngine::render() {
 void IvanoffEngine::dumpFrame() {
 	// Debugging aid: "dump_frames=<folder>" writes a screenshot every second.
 	if (ConfMan.hasKey("dump_frames")) {
-		uint32 now = _system->getMillis();
+		uint32 now = getMillis();
 		if (now - _lastDump >= 1000) {
 			_lastDump = now;
 			Common::Path path(ConfMan.get("dump_frames"));

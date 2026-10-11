@@ -88,6 +88,8 @@ void CPU::dumpState() {
 
 void CPU::unimplemented(const char *what) {
 	dumpState();
+	if (_mem._faultHandler)
+		_mem._faultHandler(_startEip);
 	error("Emu: unimplemented %s at %08x (bytes %02x %02x %02x %02x)", what, _startEip,
 	      _mem.r8(_startEip), _mem.r8(_startEip + 1), _mem.r8(_startEip + 2), _mem.r8(_startEip + 3));
 }
@@ -471,6 +473,8 @@ void CPU::step() {
 	_tracePos = (_tracePos + 1) % kTraceSize;
 	_instructions++;
 	_startEip = eip;
+	if (eip - _coverageBase < _coverage.size())
+		_coverage[eip - _coverageBase] = 1;
 
 	_os = 4;
 	_rep = 0;

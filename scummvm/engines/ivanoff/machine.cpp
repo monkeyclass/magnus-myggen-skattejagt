@@ -19,13 +19,16 @@
  *
  */
 
+#include "common/config-manager.h"
 #include "common/debug.h"
+#include "common/tokenizer.h"
 #include "common/file.h"
 #include "common/system.h"
 
 #include "ivanoff/enginefuncs.h"
 #include "ivanoff/ivanoff.h"
 #include "ivanoff/machine.h"
+#include "ivanoff/script.h"
 #include "ivanoff/sprite.h"
 
 namespace Ivanoff {
@@ -659,7 +662,7 @@ void Machine::importCall(CPU &cpu, const Common::String &name) {
 	} else if (name == "KERNEL32.DLL!GetCurrentThreadId") {
 		result = 1;
 	} else if (name == "WINMM.DLL!timeGetTime" || name == "KERNEL32.DLL!GetTickCount") {
-		result = g_system->getMillis();
+		result = g_engine->getMillis();
 	} else if (name == "USER32.DLL!wsprintfA") {
 		Common::String out = formatPrintf(_mem, _mem.readString(cpu.arg(1)), cpu.r[ESP] + 12);
 		_mem.writeString(cpu.arg(0), out);
@@ -685,9 +688,19 @@ void Machine::importCall(CPU &cpu, const Common::String &name) {
 
 // --- EmuObject ---
 
+EmuObject::~EmuObject() {
+	delete _script;
+}
+
+uint32 EmuObject::getVtable() const {
+	return _machine->mem().r32(_addr);
+}
+
 bool EmuObject::accepts(Message &msg) {
 	if (_native)
 		return false;
+	if (_script)
+		return _script->accepts(msg);
 	// Slot 5 (+0x14)
 	uint32 vt = _machine->mem().r32(_addr);
 	uint32 m = _machine->allocMessage(msg);
@@ -702,6 +715,10 @@ uint32 EmuObject::eventMask() {
 }
 
 void EmuObject::handle(Message &msg) {
+	if (_script) {
+		_script->handle(msg);
+		return;
+	}
 	// Slot 6 (+0x18)
 	uint32 vt = _machine->mem().r32(_addr);
 	uint32 m = _machine->allocMessage(msg);
@@ -857,7 +874,10 @@ bool Machine::load(const Common::Path &exePath) {
 	_cpu.fsBase = kTib;
 
 	installEngineTraps();
-	_mem._faultHandler = [](uint32) { g_engine->_machine->cpu().dumpState(); };
+	_mem._faultHandler = [](uint32) {
+		g_engine->_machine->cpu().dumpState();
+		g_engine->debugFault("unmapped address");
+	};
 
 	// The registry values the installer writes. The game folder is C:\MM2.
 	Common::String lang = g_engine->getLanguageDir();
@@ -900,6 +920,9 @@ void Machine::createObjects() {
 	_kernel->_childContainer = _mem.alloc(0x14);
 	_mem.w32(k + 0xc, _world);
 	_mem.w32(k + 0x14, _kernel->_childContainer);
+	uint32 vars = _mem.alloc(0xc);
+	_cpu.call(kVarContainerCtor, vars);
+	_mem.w32(k + 0x10, vars);
 	_objects[k] = _kernel;
 	_containers[_kernel->_childContainer] = _kernel;
 	g_engine->_world->add(_kernel);
@@ -907,6 +930,34 @@ void Machine::createObjects() {
 	uint32 args[2] = { _world, k };
 	_cpu.call(kSetupObjects, 0, 2, args);
 	debug(1, "Machine: created %d objects, %d children", _objects.size(), _children.size());
+}
+
+static bool inList(const Common::String &list, uint32 vtable) {
+	Common::StringTokenizer tok(list, ", ");
+	while (!tok.empty())
+		if (strtoul(tok.nextToken().c_str(), nullptr, 16) == vtable)
+			return true;
+	return false;
+}
+
+void Machine::attachScripts() {
+	// Debugging aid: "native_scripts" is all (the default), none or a list
+	// of vtables; "native_exclude" lists vtables to keep in the interpreter.
+	Common::String only = ConfMan.hasKey("native_scripts") ? ConfMan.get("native_scripts") : "all";
+	Common::String exclude = ConfMan.hasKey("native_exclude") ? ConfMan.get("native_exclude") : "";
+	if (only == "none")
+		return;
+	int n = 0;
+	for (Common::HashMap<uint32, EmuObject *>::iterator it = _objects.begin(); it != _objects.end(); ++it) {
+		EmuObject *obj = it->_value;
+		uint32 vt = obj->getVtable();
+		if (obj->_native || (only != "all" && !inList(only, vt)) || inList(exclude, vt))
+			continue;
+		obj->_script = createScript(obj);
+		if (obj->_script)
+			n++;
+	}
+	debug(1, "Machine: %d objects run native logic", n);
 }
 
 EmuObject *Machine::objectAt(uint32 addr) const {
@@ -1030,6 +1081,10 @@ void Machine::engineCall(CPU &cpu, int id) {
 		uint16 key = cpu.arg(0);
 		if (self == _world) {
 			EmuObject *obj = (EmuObject *)world->get(key);
+			// Debugging aid: messages from the fuzzer name objects that
+			// don't exist; their variables are the kernel's (none).
+			if (!obj && ConfMan.hasKey("fuzz_dict"))
+				obj = _kernel;
 			result = obj ? obj->getAddr() : 0;
 		} else if (_containers.contains(self)) {
 			Child *c = _containers[self]->getChild(key);

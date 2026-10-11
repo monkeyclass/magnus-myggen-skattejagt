@@ -352,6 +352,9 @@ private:
 	bool _playing = false;
 	int32 _notify = 0;
 	int32 _notifyParam = 0;
+	/** With the virtual clock, sounds aren't played and end at this time. */
+	uint32 _endTime = 0;
+	bool isActive() const;
 };
 
 /** FUN_00479400: a text string from the language pack (0xfe02). */
