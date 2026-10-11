@@ -948,6 +948,7 @@ void TextSprite::play(int32 p1, int32 p2, int32 p3) {
 
 void TextSprite::setText(const Common::String &text) {
 	_text = text;
+	_revision++;
 	render();
 }
 

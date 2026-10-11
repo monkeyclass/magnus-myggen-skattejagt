@@ -167,6 +167,9 @@ public:
 	/** +0x7c: drawing mode (vtable +0x28). */
 	int32 _mode = 0;
 
+	/** Changes when the image changes without a new surface (e.g. a large animation's frame). */
+	virtual uint32 getRevision() const { return 0; }
+
 	int32 getX() const { return _x; }
 	int32 getY() const { return _y; }
 	int32 getZ() const { return _z; }
@@ -224,6 +227,7 @@ public:
 	const byte *getPalette() const override { return _palette; }
 
 	int frameCount() const { return _frameCount; }
+	uint32 getRevision() const override { return _frame; }
 	bool isPaused() const override { return _paused; }
 	int currentFrame() const { return _frame; }
 	void gotoFrame(int frame);
@@ -353,9 +357,11 @@ public:
 	const Graphics::Surface *getSurface() const override { return _surface; }
 
 	void setText(const Common::String &text);
+	uint32 getRevision() const override { return _revision; }
 
 private:
 	void render();
+	uint32 _revision = 0;
 
 	Graphics::Surface *_surface = nullptr;
 	Common::String _text;

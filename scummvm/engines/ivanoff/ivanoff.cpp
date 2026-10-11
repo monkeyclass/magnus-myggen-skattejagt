@@ -145,6 +145,12 @@ Common::Error IvanoffEngine::run() {
 		}
 
 		uint32 now = _system->getMillis();
+		if (now - _statsTime >= 5000) {
+			uint64 n = _machine->cpu()._instructions;
+			debug(1, "Interpreter: %u instructions/s", (uint)((n - _statsInstructions) * 1000 / MAX<uint32>(now - _statsTime, 1)));
+			_statsInstructions = n;
+			_statsTime = now;
+		}
 		runDebugEvents(now);
 		_world->update();
 		updateChildren(now);
@@ -355,6 +361,21 @@ void IvanoffEngine::collectSprites(Common::Array<Sprite *> &list) {
 void IvanoffEngine::render() {
 	Common::Array<Sprite *> list;
 	collectSprites(list);
+
+	// Skip the composition when nothing visible changed (small devices).
+	uint32 sig = list.size();
+	for (uint i = 0; i < list.size(); i++) {
+		Sprite *sp = list[i];
+		uint32 v = (uint32)(uintptr)sp ^ ((uint32)(uintptr)sp->getSurface() << 7) ^ (sp->getX() << 3) ^
+		           (sp->getY() << 17) ^ (sp->getZ() << 11) ^ sp->getRevision();
+		sig = (sig ^ v) * 16777619;
+	}
+	if (sig == _lastSignature && !_paletteDirty && !_forceRedraw) {
+		_system->updateScreen();
+		return;
+	}
+	_lastSignature = sig;
+	_forceRedraw = false;
 
 	_screen.fillRect(Common::Rect(640, 480), 0);
 	for (uint i = 0; i < list.size(); i++)

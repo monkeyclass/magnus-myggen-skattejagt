@@ -131,6 +131,12 @@ private:
 	uint32 _debugStart = 0;
 	int _debugEventIndex = 0;
 
+	uint32 _lastSignature = 0;
+	bool _forceRedraw = true;
+
+	uint32 _statsTime = 0;
+	uint64 _statsInstructions = 0;
+
 	uint32 _lastDump = 0;
 	int _dumpCount = 0;
 };
