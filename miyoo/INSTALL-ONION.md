@@ -9,7 +9,8 @@ Onion OS app. You need the **Nordic retail CD (2002)**, or an image of it.
 Download `MagnusMyggen2-OnionOS.zip` from the project's
 [releases](https://github.com/monkeyclass/magnus-myggen-skattejagt/releases). It is built by
 GitHub Actions (`.github/workflows/miyoo.yml`); each push also leaves the zip as a workflow
-artifact. Or build it yourself on Linux:
+artifact. To publish a new release: Actions → *Miyoo Mini build* → *Run workflow*, with a tag
+name such as `v0.2.0`. Or build it yourself on Linux:
 
 1. Install the Miyoo Mini toolchain (1.5 GB unpacked):
 
