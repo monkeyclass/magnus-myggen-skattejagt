@@ -35,6 +35,7 @@
 
 namespace Graphics {
 class Cursor;
+class Font;
 struct WinCursorGroup;
 }
 
@@ -77,6 +78,9 @@ public:
 	/** Command 0x14: the sprite follows the mouse, held at (x, y). */
 	void attachToCursor(Sprite *sprite, int x, int y, int32 param);
 	void detachFromCursor(Sprite *sprite);
+
+	/** A font like the GDI one the game asks for (size in tenths of a point at 96 dpi). */
+	const Graphics::Font *getFont(const Common::String &name, int size, int style);
 
 	/** Draws the screen now (the original's synchronous repaint). */
 	void redrawNow() { render(); }
@@ -134,6 +138,7 @@ private:
 	Common::Array<Attached> _attached;
 
 	Common::HashMap<int32, int> _groups;
+	Common::HashMap<Common::String, Graphics::Font *> _fonts;
 
 	void runDebugEvents(uint32 now);
 	uint32 _debugStart = 0;

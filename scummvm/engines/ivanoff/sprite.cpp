@@ -26,6 +26,7 @@
 #include "common/system.h"
 #include "image/bmp.h"
 #include "graphics/font.h"
+#include "graphics/fonts/ttf.h"
 #include "graphics/fontman.h"
 #include "video/avi_decoder.h"
 #include "video/flic_decoder.h"
@@ -917,30 +918,36 @@ void TextResource::load() {
 	_loaded = true;
 }
 
+/** A child named by (child << 16) | object, as text sources are. */
+static Child *childByKey(uint32 key) {
+	GameObject *obj = g_engine->_world->get(key & 0xffff);
+	return obj ? obj->getChild(key >> 16) : nullptr;
+}
+
 void TextResource::play(int32 p1, int32 p2, int32 p3) {
+	// FUN_004796c0
 	load();
 	if (p1 == 0)
 		return;
 	if (_target)
 		stop();
-	GameObject *obj = g_engine->_world->get((uint32)p1 >> 16);
-	TextSprite *t = obj ? dynamic_cast<TextSprite *>(obj->getChild(p1 & 0xffff)) : nullptr;
+	TextSprite *t = dynamic_cast<TextSprite *>(childByKey(p1));
 	if (!t) {
 		warning("TextResource %d: no text sprite %08x", _id, p1);
 		return;
 	}
 	t->load();
-	t->setText(_text);
+	t->setSource(((uint32)_id << 16) | _owner->getId());
 	_target = p1;
 	_visible = true;
 }
 
 void TextResource::stop() {
+	// FUN_00479740
 	if (_target) {
-		GameObject *obj = g_engine->_world->get(_target >> 16);
-		TextSprite *t = obj ? dynamic_cast<TextSprite *>(obj->getChild(_target & 0xffff)) : nullptr;
+		TextSprite *t = dynamic_cast<TextSprite *>(childByKey(_target));
 		if (t)
-			t->setText(Common::String());
+			t->setSource(0);
 	}
 	_target = 0;
 	_visible = false;
@@ -949,9 +956,9 @@ void TextResource::stop() {
 // --- TextSprite (FUN_004797f0) ---
 
 TextSprite::TextSprite(uint16 id, int32 fg, int32 bg, const Common::String &font, int32 size, int32 wrap,
-                       int32 align, int32 charset, uint32 source, uint32 flags) :
+                       int32 mode, int32 style, uint32 source, uint32 flags) :
 	Sprite(id, kTypeText, -1, flags, 1), _fg(fg), _bg(bg), _font(font), _size(size), _wrap(wrap),
-	_align(align), _source(source) {
+	_mode(mode), _style(style), _source(source) {
 	if (_bg < 0)
 		_transparent = 0xfa;
 }
@@ -963,8 +970,53 @@ TextSprite::~TextSprite() {
 	}
 }
 
+void TextSprite::handleCommand(Message &msg) {
+	// FUN_0047a660
+	switch (msg.cmd) {
+	case 0xd: {
+		// Font: name, size (tenths of a point), style; 0 / -1 keep the current one.
+		if (msg.p1)
+			_font = g_engine->_machine->mem().readString(msg.p1);
+		if (msg.p2)
+			_size = msg.p2;
+		if (msg.p3 != -1)
+			_style = msg.p3;
+		render();
+		break;
+	}
+	case 0xe:
+		setSource(((uint32)(msg.p2 & 0xffff) << 16) | (msg.p1 & 0xffff));
+		break;
+	case 0xf:
+		if (msg.p1)
+			setText(g_engine->_machine->mem().readString(msg.p1));
+		break;
+	case 0x10:
+		// FUN_0047a4b0: colours, palette entries 10-245 (background < 0: none).
+		if (msg.p1 > 9 && msg.p1 < 0xf6)
+			_fg = msg.p1;
+		if (msg.p2 < 0 || (msg.p2 > 9 && msg.p2 < 0xf6))
+			_bg = msg.p2;
+		_transparent = _bg < 0 ? 0xfa : -1;
+		render();
+		break;
+	case 0x11:
+		setBox(msg.p1, msg.p2);
+		break;
+	default:
+		if (msg.cmd >= 0xd && msg.cmd <= 0x34 && msg.cmd != 0x16 && msg.cmd != 0x1a && msg.cmd != 0x1b &&
+		    msg.cmd < 0x24)
+			debug(1, "TextSprite %d: command %x (%d, %d, %d) not implemented", _id, msg.cmd, msg.p1, msg.p2, msg.p3);
+		Sprite::handleCommand(msg);
+		break;
+	}
+}
+
 void TextSprite::load() {
-	_loaded = true;
+	if (!_loaded) {
+		_loaded = true;
+		render();
+	}
 }
 
 void TextSprite::play(int32 p1, int32 p2, int32 p3) {
@@ -972,36 +1024,86 @@ void TextSprite::play(int32 p1, int32 p2, int32 p3) {
 	_visible = true;
 }
 
-void TextSprite::setText(const Common::String &text) {
-	_text = text;
-	_revision++;
+void TextSprite::setSource(uint32 source) {
+	_source = source;
 	render();
 }
 
+void TextSprite::setText(const Common::String &text) {
+	_literal = text;
+	_source = 0xffffffff;
+	render();
+}
+
+void TextSprite::setBox(int32 w, int32 h) {
+	_boxW = MAX(w, 0);
+	_boxH = MAX(h, 0);
+	render();
+}
+
+Common::String TextSprite::currentText() const {
+	if (_source == 0xffffffff)
+		return _literal;
+	if (_source == 0)
+		return Common::String();
+	TextResource *r = dynamic_cast<TextResource *>(childByKey(_source));
+	if (!r)
+		return Common::String();
+	r->load();
+	return r->getText();
+}
+
+void TextSprite::refresh() {
+	if (currentText() != _shown)
+		render();
+}
+
 void TextSprite::render() {
-	// [unverified] The original draws with GDI (DrawText) in the font given
-	// at construction; this uses ScummVM's GUI font for now.
-	const Graphics::Font *font = FontMan.getFontByUsage(Graphics::FontManager::kBigGUIFont);
+	// FUN_00479cb0
+	_shown = currentText();
+	_revision++;
 	if (_surface) {
 		_surface->free();
 		delete _surface;
 		_surface = nullptr;
 	}
-	if (_text.empty())
+	if (_shown.empty() && _boxW == 0)
 		return;
 
+	const Graphics::Font *font = g_engine->getFont(_font, _size, _style);
 	Common::Array<Common::String> lines;
-	int maxWidth = _wrap ? 600 : 640;
-	font->wordWrapText(_text, maxWidth, lines);
-	int w = 0;
-	for (uint i = 0; i < lines.size(); i++)
-		w = MAX(w, font->getStringWidth(lines[i]));
-	int lh = font->getFontHeight() + 2;
+	if (_wrap && _boxW > 0) {
+		font->wordWrapText(_shown, _boxW, lines);
+	} else {
+		// Lines end at CR/LF only.
+		Common::String line;
+		for (uint i = 0; i < _shown.size(); i++) {
+			if (_shown[i] == '\r')
+				continue;
+			if (_shown[i] == '\n') {
+				lines.push_back(line);
+				line.clear();
+			} else {
+				line += _shown[i];
+			}
+		}
+		lines.push_back(line);
+	}
+	int lh = font->getFontHeight();
+	int w = _boxW;
+	if (w == 0)
+		for (uint i = 0; i < lines.size(); i++)
+			w = MAX(w, font->getStringWidth(lines[i]));
+	int textH = lh * lines.size();
+	int h = _boxH ? _boxH : textH;
+
 	_surface = new Graphics::Surface();
-	_surface->create(MAX(w, 1), MAX<int>(lh * lines.size(), 1), Graphics::PixelFormat::createFormatCLUT8());
+	_surface->create(MAX(w, 1), MAX(h, 1), Graphics::PixelFormat::createFormatCLUT8());
 	_surface->fillRect(Common::Rect(_surface->w, _surface->h), _bg < 0 ? 0xfa : _bg);
+	// [unverified] Vertical placement by mode: 1 centred, others at the top.
+	int y = (_mode == 1 && h > textH) ? (h - textH) / 2 : 0;
 	for (uint i = 0; i < lines.size(); i++)
-		font->drawString(_surface, lines[i], 0, i * lh, _surface->w, _fg, Graphics::kTextAlignCenter);
+		font->drawString(_surface, lines[i], 0, y + i * lh, _surface->w, _fg, Graphics::kTextAlignLeft);
 }
 
 // --- VideoSprite (FUN_0047af30) ---

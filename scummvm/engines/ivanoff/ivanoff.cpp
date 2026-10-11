@@ -29,6 +29,9 @@
 #include "engines/util.h"
 #include "graphics/cursor.h"
 #include "graphics/cursorman.h"
+#include "graphics/font.h"
+#include "graphics/fontman.h"
+#include "graphics/fonts/ttf.h"
 #include "graphics/paletteman.h"
 #include "graphics/wincursor.h"
 #include "image/png.h"
@@ -72,6 +75,8 @@ IvanoffEngine::~IvanoffEngine() {
 		delete _cursorGroups[i];
 	delete _defaultCursor;
 	delete _busyCursor;
+	for (Common::HashMap<Common::String, Graphics::Font *>::iterator it = _fonts.begin(); it != _fonts.end(); ++it)
+		delete it->_value;
 	_screen.free();
 }
 
@@ -209,6 +214,39 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 			onKey(Common::KEYCODE_ESCAPE, 27, false);
 		}
 	}
+}
+
+const Graphics::Font *IvanoffEngine::getFont(const Common::String &name, int size, int style) {
+	// FUN_0048b9f0: CFont::CreatePointFont(size, name) with bold/italic bits.
+	int px = MAX(1, (size * 96 + 360) / 720);
+	Common::String key = Common::String::format("%s/%d/%d", name.c_str(), px, style & 3);
+	if (_fonts.contains(key))
+		return _fonts[key];
+
+	// Liberation fonts have the metrics of Arial and Times New Roman.
+	bool serif = name.contains("Times") || name.contains("Roman");
+	Common::String file = Common::String("Liberation") + (serif ? "Serif" : "Sans") + "-";
+	if ((style & 3) == 3)
+		file += "BoldItalic";
+	else if (style & 1)
+		file += "Bold";
+	else if (style & 2)
+		file += "Italic";
+	else
+		file += "Regular";
+	file += ".ttf";
+
+	Graphics::Font *font = nullptr;
+#ifdef USE_FREETYPE2
+	font = Graphics::loadTTFFontFromArchive(file, px, Graphics::kTTFSizeModeCharacter, 0, 0,
+	                                        Graphics::kTTFRenderModeMonochrome);
+#endif
+	if (!font) {
+		warning("Can't load %s; using the GUI font", file.c_str());
+		return FontMan.getFontByUsage(Graphics::FontManager::kBigGUIFont);
+	}
+	_fonts[key] = font;
+	return font;
 }
 
 // --- palette ---

@@ -59,6 +59,8 @@ From the Nordic retail CD (Danish, Norwegian, Swedish and Finnish in one):
   dialogue, walking between rooms, the labyrinth (Cinepak videos, opened only
   while playing), drag and drop (both of the original's modes), sprite
   cursors, timers, the settings file.
-- Not done yet: text rendering uses ScummVM's GUI font instead of the game's
-  fonts; ScummVM save/load integration (the game's own save screens use
+- Texts (subtitles, counters, save screen labels) use the Liberation fonts from
+  ScummVM's `fonts.dat`, which have Arial's and Times New Roman's metrics; the
+  hall's subtitle matches the original (under Wine) pixel for pixel.
+- Not done yet: ScummVM save/load integration (the game's own save screens use
   `appdata`); playing the whole game through.

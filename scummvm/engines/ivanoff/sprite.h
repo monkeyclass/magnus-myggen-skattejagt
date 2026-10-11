@@ -354,30 +354,40 @@ private:
 	uint32 _target = 0;
 };
 
-/** FUN_004797f0: a text box (0xfe05). */
+/** FUN_004797f0: a text box (0xfe05), drawn like GDI's DrawText without antialiasing. */
 class TextSprite : public Sprite {
 public:
 	TextSprite(uint16 id, int32 fg, int32 bg, const Common::String &font, int32 size, int32 wrap,
-	           int32 align, int32 charset, uint32 source, uint32 flags);
+	           int32 mode, int32 style, uint32 source, uint32 flags);
 	~TextSprite() override;
 
+	void handleCommand(Message &msg) override;
 	void load() override;
 	void play(int32 p1, int32 p2, int32 p3) override;
 	const Graphics::Surface *getSurface() const override { return _surface; }
-
-	void setText(const Common::String &text);
 	uint32 getRevision() const override { return _revision; }
 
+	/** FUN_0047a2f0: show the text of a string child, (child << 16) | object; 0 = none. */
+	void setSource(uint32 source);
+	/** FUN_0047a340: show a literal text. */
+	void setText(const Common::String &text);
+	/** FUN_0047a920 (command 0x11): the box size; 0 = fit the text. */
+	void setBox(int32 w, int32 h);
+	/** Redraws if the text of the source changed. */
+	void refresh();
+
 private:
+	Common::String currentText() const;
 	void render();
-	uint32 _revision = 0;
 
 	Graphics::Surface *_surface = nullptr;
-	Common::String _text;
+	uint32 _revision = 0;
+	Common::String _literal;
+	Common::String _shown;
 	Common::String _font;
-	int32 _fg, _bg, _size, _wrap, _align;
-	uint32 _source;
-	int _width = 0, _height = 0;
+	int32 _fg, _bg, _size, _wrap, _mode, _style;
+	uint32 _source; ///< +0x88: (child << 16) | object, 0xffffffff = literal
+	int _boxW = 0, _boxH = 0;
 };
 
 /** FUN_0047af30: an AVI video (0xfe04), used in the labyrinths; otherwise an animation. */

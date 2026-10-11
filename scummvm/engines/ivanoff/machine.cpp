@@ -1081,6 +1081,9 @@ void Machine::engineCall(CPU &cpu, int id) {
 		break;
 	case kNewText: {
 		// FUN_004797f0(id, fg, bg, CString font, size, wrap, align, charset, source, flags)
+		debug(2, "TextSprite %d: fg %d bg %d font %s size %d wrap %d mode %d style %d source %08x flags %x",
+		      cpu.arg(0), cpu.arg(1), cpu.arg(2), _mem.readString(cpu.arg(3)).c_str(), cpu.arg(4), cpu.arg(5),
+		      cpu.arg(6), cpu.arg(7), cpu.arg(8), cpu.arg(9));
 		TextSprite *t = new TextSprite(cpu.arg(0), cpu.arg(1), cpu.arg(2),
 		                               _mem.readString(cpu.arg(3)), cpu.arg(4), cpu.arg(5),
 		                               cpu.arg(6), cpu.arg(7), cpu.arg(8), cpu.arg(9));
@@ -1218,6 +1221,13 @@ void Machine::childMethod(CPU &cpu, uint32 addr) {
 		if (Anim *a = dynamic_cast<Anim *>(c))
 			a->resume(m.p1, m.p2);
 		break;
+	case 0x90:
+		// FUN_0047a920: a text box's size.
+		if (TextSprite *t = dynamic_cast<TextSprite *>(c))
+			t->setBox(m.p1, m.p2);
+		else
+			goto unknown;
+		break;
 	case 0x78:
 		// FUN_00481c30: the position, also before loading.
 		if (Sprite *s = dynamic_cast<Sprite *>(c))
@@ -1230,6 +1240,7 @@ void Machine::childMethod(CPU &cpu, uint32 addr) {
 		}
 		// fall through
 	default:
+	unknown:
 		cpu.dumpState();
 		error("Machine: child %d (type %04x) method slot %x (%08x) not implemented", c->getId(), c->getType(), slot, addr);
 	}
