@@ -145,3 +145,20 @@
 - **Miyoo Mini:** `miyoo/build.sh` (toolchain v0.0.3 in /opt), `miyoo/prepare-game.sh`, Onion app in `miyoo/app/`.
   The ARM build runs under `qemu-arm` with the toolchain's libraries. **[unverified on a device]**
 - **[unverified]** text box mode 2 = right-aligned; image field +0x20 (command 0x18); command 9's p3.
+
+## 2026-10-11 — Native rewrite of the game logic: started
+- **Goal:** replace the interpreted game logic with native C++ class by class, without a playthrough by a person.
+  Guide: `docs/PORTING.md`.
+- **Hybrid:** objects, variables and children are still created by the original setup code; a ported class gets a native
+  `Script` for its slots 5/6 (`accepts`/`handle`), chosen by vtable. Variables stay in the interpreter's memory and are
+  used through `VarRef` (their methods by vtable slot), so random/cycler/shuffle variables behave exactly as before.
+- **Checking without playing:** `virtual_clock=<ms>` makes runs reproducible (sounds end after their computed length), so
+  the `-d4` message/command trace of a run with the native logic must equal the trace with the original code. Inputs:
+  room saves + random clicks (`crawl`), random walks, and a message fuzzer (`fuzz`, `fuzz_vars`) that sends each class
+  the message numbers and constants found in its handler and sets its variables. `coverage=<file>` reports the executed
+  original instructions. Fuzzing reaches about 50% of the handlers' instructions; clicking alone much less.
+  A deliberate off-by-one in a ported item showed up in 7 of 8 walks.
+- **Ghidra:** declaring `this` explicitly in the variable vtable prototypes fixed decompiled calls that had lost their
+  arguments (MSVC interleaves the pushes of two calls). `get` never takes arguments.
+- **Setup code:** all but three (`0x426c40`, `0x42b0c0`, `0x4575f0`) of the ~230 createVars/createChildren functions are
+  straight-line constructor calls, so the native setup can be generated from the state after setup. **[plan]**
