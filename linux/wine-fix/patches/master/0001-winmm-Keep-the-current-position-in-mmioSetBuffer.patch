@@ -1,0 +1,111 @@
+From 58e1ebab50ac557e3658be5143671e3265a4f168 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 05:55:55 +0000
+Subject: [PATCH 1/2] winmm: Keep the current position in mmioSetBuffer().
+
+The new buffer starts at the logical file position. When the old buffer
+had been read ahead, the disk offset was past that position, so the next
+mmioAdvance() read from the wrong place. This breaks the labyrinth videos
+in Magnus & Myggen 2, which seeks within a loaded buffer and then switches
+to a frame-sized buffer.
+---
+ dlls/winmm/mmio.c       | 11 +++++++++
+ dlls/winmm/tests/mmio.c | 54 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 65 insertions(+)
+
+diff --git a/dlls/winmm/mmio.c b/dlls/winmm/mmio.c
+index bd65fd52..3f1f397b 100644
+--- a/dlls/winmm/mmio.c
++++ b/dlls/winmm/mmio.c
+@@ -600,6 +600,17 @@ static MMRESULT MMIO_SetBuffer(WINE_MMIO* wm, void* pchBuffer, LONG cchBuffer,
+     if (MMIO_Flush(wm, 0) != MMSYSERR_NOERROR)
+ 	return MMIOERR_CANNOTWRITE;
+ 
++    /* The new buffer starts at the current logical position, which can lag
++     * behind the disk offset when the old buffer was read ahead. */
++    if (wm->info.pchBuffer && wm->info.fccIOProc != FOURCC_MEM)
++    {
++        LONG pos = wm->info.lBufOffset + (wm->info.pchNext - wm->info.pchBuffer);
++
++        if (pos != wm->info.lDiskOffset &&
++            send_message(wm->ioProc, &wm->info, MMIOM_SEEK, pos, SEEK_SET, FALSE) == -1)
++            return MMIOERR_CANNOTSEEK;
++    }
++
+     /* free previous buffer if allocated */
+     if (wm->info.dwFlags & MMIO_ALLOCBUF) {
+         free(wm->info.pchBuffer);
+diff --git a/dlls/winmm/tests/mmio.c b/dlls/winmm/tests/mmio.c
+index df4de553..0a19adf5 100644
+--- a/dlls/winmm/tests/mmio.c
++++ b/dlls/winmm/tests/mmio.c
+@@ -1120,6 +1120,59 @@ static void test_riff_write(void)
+     DeleteFileA("test_write.wav");
+ }
+ 
++static void test_mmioSetBuffer_position(void)
++{
++    char test_file[MAX_PATH];
++    char buffer[8], buffer2[16];
++    MMIOINFO mmio;
++    HMMIO hmmio;
++    LONG pos;
++    MMRESULT res;
++
++    if (!create_test_file(test_file)) return;
++
++    memset(&mmio, 0, sizeof(mmio));
++    mmio.fccIOProc = FOURCC_DOS;
++    mmio.pchBuffer = buffer;
++    mmio.cchBuffer = sizeof(buffer);
++    hmmio = mmioOpenA(test_file, &mmio, MMIO_READ);
++    ok(hmmio != 0, "mmioOpenA error %u\n", mmio.wErrorRet);
++    if (hmmio == NULL) {
++        DeleteFileA(test_file);
++        return;
++    }
++
++    /* fill the buffer, which moves the disk offset past it */
++    res = mmioGetInfo(hmmio, &mmio, 0);
++    ok(res == MMSYSERR_NOERROR, "expected 0, got %d\n", res);
++    res = mmioAdvance(hmmio, &mmio, MMIO_READ);
++    ok(res == MMSYSERR_NOERROR, "mmioAdvance failed %x\n", res);
++    res = mmioSetInfo(hmmio, &mmio, 0);
++    ok(res == MMSYSERR_NOERROR, "expected 0, got %d\n", res);
++
++    /* seek inside the loaded buffer */
++    pos = mmioSeek(hmmio, 3, SEEK_SET);
++    ok(pos == 3, "expected 3, got %ld\n", pos);
++
++    /* a new buffer starts at the current position, not at the disk offset */
++    res = mmioSetBuffer(hmmio, buffer2, sizeof(buffer2), 0);
++    ok(res == MMSYSERR_NOERROR, "mmioSetBuffer error %u\n", res);
++    res = mmioGetInfo(hmmio, &mmio, 0);
++    ok(res == MMSYSERR_NOERROR, "expected 0, got %d\n", res);
++    ok(mmio.lBufOffset == 3, "expected 3, got %ld\n", mmio.lBufOffset);
++    pos = mmioSeek(hmmio, 0, SEEK_CUR);
++    ok(pos == 3, "expected 3, got %ld\n", pos);
++
++    res = mmioAdvance(hmmio, &mmio, MMIO_READ);
++    ok(res == MMSYSERR_NOERROR, "mmioAdvance failed %x\n", res);
++    ok(mmio.lBufOffset == 3, "expected 3, got %ld\n", mmio.lBufOffset);
++    ok(mmio.pchEndRead - mmio.pchBuffer == sizeof(buffer2), "got %d\n", (int)(mmio.pchEndRead - mmio.pchBuffer));
++    ok(!memcmp(buffer2, (char *)RIFF_buf + 3, sizeof(buffer2)), "read data from the wrong position\n");
++
++    mmioClose(hmmio, 0);
++    DeleteFileA(test_file);
++}
++
+ START_TEST(mmio)
+ {
+     /* Make it possible to run the tests against a specific AVI file in
+@@ -1139,5 +1192,6 @@ START_TEST(mmio)
+     test_mmioSeek();
+     test_mmio_end_of_file();
+     test_mmio_buffer_pointer();
++    test_mmioSetBuffer_position();
+     test_riff_write();
+ }
+-- 
+2.43.0
+

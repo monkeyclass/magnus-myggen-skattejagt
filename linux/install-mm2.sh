@@ -3,26 +3,31 @@
 # Nordic retail CD, 2001/2002 build) into a Wine or Proton prefix without
 # running the InstallShield setup, which tends to hang under Wine.
 #
-# usage: install-mm2.sh <disc> [--lang DK|N|S|SF] [--prefix DIR] [--proton PATH]
+# usage: install-mm2.sh <disc> [--lang DK|N|S|SF] [--prefix DIR] [--proton PATH] [--no-wine-fix]
 #   <disc>      the CD-ROM mount point, an extracted copy of it, or an .iso
 #   --lang      game language (default DK)
 #   --prefix    Wine prefix (default ~/.local/share/mm2/prefix).
 #               With --proton this is STEAM_COMPAT_DATA_PATH; the Wine
 #               prefix itself is <prefix>/pfx.
 #   --proton    path to a Proton build's "proton" script (e.g. GE-Proton)
+#   --no-wine-fix
+#               don't install the patched winmm.dll/iccvid.dll from wine-fix/;
+#               without them the labyrinth videos stay black (see wine-fix/README.md)
 #
 # Needs: unshield (and 7z when <disc> is an .iso).
 set -euo pipefail
 
 die() { echo "error: $*" >&2; exit 1; }
 
-disc="" lang="DK" prefix="$HOME/.local/share/mm2/prefix" proton=""
+disc="" lang="DK" prefix="$HOME/.local/share/mm2/prefix" proton="" winefix=1
+here=$(cd "$(dirname "$0")" && pwd)
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--lang) lang="${2^^}"; shift 2 ;;
 	--prefix) prefix="$2"; shift 2 ;;
 	--proton) proton="$2"; shift 2 ;;
-	-h|--help) sed -n '2,15p' "$0"; exit 0 ;;
+	--no-wine-fix) winefix=0; shift ;;
+	-h|--help) sed -n '2,18p' "$0"; exit 0 ;;
 	*) [ -z "$disc" ] || die "unexpected argument: $1"; disc="$1"; shift ;;
 	esac
 done
@@ -100,6 +105,18 @@ regadd "Resource local file" "$dir\\$lang\\mm2lng"
 echo "Enabling a 640x480 virtual desktop for this prefix ..."
 run reg add 'HKCU\Software\Wine\Explorer' /v Desktop /t REG_SZ /d Default /f >/dev/null 2>&1
 run reg add 'HKCU\Software\Wine\Explorer\Desktops' /v Default /t REG_SZ /d 640x480 /f >/dev/null 2>&1
+
+# Wine's winmm and Cinepak decoder can't play the labyrinth videos (black
+# screen); load the fixed copies from the game folder for this game only.
+if [ "$winefix" = 1 ]; then
+	[ -f "$here/wine-fix/winmm.dll" ] && [ -f "$here/wine-fix/iccvid.dll" ] ||
+		die "wine-fix/winmm.dll and iccvid.dll not found next to this script (or use --no-wine-fix)"
+	echo "Installing the labyrinth video fix (patched winmm.dll, iccvid.dll) ..."
+	cp "$here/wine-fix/winmm.dll" "$here/wine-fix/iccvid.dll" "$game/"
+	okey='HKCU\Software\Wine\AppDefaults\mm2run.exe\DllOverrides'
+	run reg add "$okey" /v winmm /t REG_SZ /d native,builtin /f >/dev/null 2>&1
+	run reg add "$okey" /v iccvid /t REG_SZ /d native,builtin /f >/dev/null 2>&1
+fi
 
 echo
 echo "Installed. Start the game with:"

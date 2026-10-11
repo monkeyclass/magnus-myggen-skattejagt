@@ -11,7 +11,8 @@ This repository contains **no game data**. You need your own copy of the CD.
 | Target | Status |
 |---|---|
 | Linux, Wine 9 | **Works.** Intro, navigation, Danish speech and subtitles, saving and loading verified. See [`linux/INSTALL-LINUX.md`](linux/INSTALL-LINUX.md). |
-| Linux, Proton | **Works.** Tested with GE-Proton10-25 via `install-mm2.sh --proton`: intro, navigation, saving and loading. |
+| Linux, Proton | **Works.** Tested with GE-Proton10-25 via `install-mm2.sh --proton`: intro, navigation, saving and loading, and both labyrinths. |
+| Labyrinth videos under Wine/Proton | **Fixed here.** Two Wine bugs; the patched DLLs and patches are in [`linux/wine-fix/`](linux/wine-fix/README.md) and get installed automatically. |
 | ScummVM → Miyoo Mini (OnionOS) | Not started. The game is **not** Macromedia Director (unlike the first game in the series), so it needs a new ScummVM engine. Data formats are mostly decoded; see [`NOTES.md`](NOTES.md). |
 
 ## Which disc
@@ -24,6 +25,7 @@ This repository contains **no game data**. You need your own copy of the CD.
 
 - `linux/install-mm2.sh`: installs the game from the CD or an ISO into a Wine or Proton prefix, without the InstallShield setup.
 - `linux/bin2iso.py`: converts a MODE1/2352 `.bin` to `.iso`.
+- `linux/wine-fix/`: the labyrinth fix: Wine patches (for `master` and for 10.0), prebuilt DLLs, and a build script.
 - `tools/mm2pack.py`: lists and extracts entries from the game's `.idx`/`.dat` resource packs.
 - `tools/xref.py`, `tools/dis.py`: small capstone/pefile helpers used for reverse-engineering `mm2run.exe`.
 - `NOTES.md`: the full research log (findings, decisions, open questions).

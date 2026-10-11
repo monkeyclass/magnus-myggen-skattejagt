@@ -104,3 +104,26 @@
 - Verified under Proton: intro, navigation, save slot 1, wineserver kill + relaunch, load slot 1. Saves are in
   `pfx/drive_c/ProgramData/IVANOFF/MM2/2.0/`.
 - Still not verified (Wine or Proton): the labyrinth (Cinepak AVIs), minigames, a full playthrough, and the Steam shortcut flow.
+
+## 2026-10-11 — Labyrinth: two Wine bugs found and fixed
+- **Reaching it:** the room objects are created in one setup routine (around 0x43f000–0x443000 in the 2002 exe), each with
+  `push <room id>` and a vtable. The labyrinth handlers (the code that reads `LabPath`) sit in the vtables of rooms
+  **40** and **42** (Lab1 / Lab3). Room IDs run from 10 to 128 (hall = 36, portrait gallery = 49).
+- **Save format (.m2s), inferred:** a 12-byte header, then records `{u16 type, u16 id, u32 len, data}`. The current room is
+  in records (17,1) and (82,53). `settings.dat` lists `SavedGame<N>=<thumbnail room>` and `SavedGameTime<N>`.
+  Editing the room in a save (`tools/m2s_setroom.py`) and loading it jumps straight there. Verified with 49 → gallery, 40/42 → labyrinth.
+- **Symptom:** labyrinth video area black (Wine 9 / GE-Proton10-25 stock).
+- **Cause 1 — winmm `mmioSetBuffer()`:** the game reads frames with mmioSeek + mmioSetBuffer(frame buf) + mmioAdvance.
+  When it seeks inside the loaded 8 KB buffer, Wine leaves the disk offset at the end of the read-ahead, and `MMIO_SetBuffer`
+  sets `lBufOffset = lDiskOffset`, so every frame is read 8 KB too far. Still present in Wine master (2026-10-09).
+  Fix: seek the IO proc to the logical position before switching buffers. New test `test_mmioSetBuffer_position`:
+  4 failures with stock winmm, 0 with the fix. **[expected Windows behaviour inferred from the game working there; the test is not yet run on Windows]**
+- **Cause 2 — iccvid 8-bit output:** the game decodes into 8 bpp. Wine's DecompressQuery rejects 8 bpp, but DecompressBegin
+  accepts it and decode_cinepak has no 8-bit path, so it writes 24-bit pixels into the 8-bit buffer (noise and heap corruption).
+  Fix: decode at 32 bpp into a private frame, then map to the output palette with a cached RGB555 → index table.
+  Wine's own test already expected 8-bit Query == ICERR_OK on Windows (it was a `todo_wine`); it passes now.
+- `ICM_DECOMPRESS_GET_PALETTE` (0x401e) is still unimplemented in Wine (FIXME). The game copes; colours look right with its own palette.
+- Delivery: `linux/wine-fix/` (patches for master and 10.0, prebuilt stripped DLLs with the builtin marker cleared, `build.sh`).
+  `install-mm2.sh` copies them next to mm2run.exe and sets AppDefaults\mm2run.exe\DllOverrides winmm, iccvid = native,builtin.
+- Upstream TODO: send both master patches to wine-devel (GitLab MR at gitlab.winehq.org). Wine requires a real-name author and
+  that the new test passes on Windows (testbot).

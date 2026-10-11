@@ -1,0 +1,174 @@
+From d7ac4662689100a08d232c038cffe1737dd029f0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 05:55:55 +0000
+Subject: [PATCH 2/2] iccvid: Support 8-bit palettized output.
+
+Decode to a 32-bit frame and map it to the output palette through a
+cached RGB555 lookup table. Previously 8-bit output was accepted by
+ICM_DECOMPRESS_BEGIN but then decoded as 24-bit into the 8-bit buffer.
+---
+ dlls/iccvid/iccvid.c       | 85 +++++++++++++++++++++++++++++++++++++-
+ dlls/iccvid/tests/iccvid.c |  2 +-
+ 2 files changed, 85 insertions(+), 2 deletions(-)
+
+diff --git a/dlls/iccvid/iccvid.c b/dlls/iccvid/iccvid.c
+index f9ae4bf1..7525aa69 100644
+--- a/dlls/iccvid/iccvid.c
++++ b/dlls/iccvid/iccvid.c
+@@ -79,6 +79,12 @@ typedef struct _ICCVID_Info
+     DWORD         dwMagic;
+     int           bits_per_pixel;
+     cinepak_info *cvinfo;
++    /* 8-bit output: frames are decoded at 32 bpp, then mapped to the palette */
++    unsigned char *frame32;
++    RGBQUAD       palette[256];
++    unsigned int  palette_count;
++    BOOL          palette_valid;
++    unsigned char palette_map[32768]; /* RGB555 -> palette index */
+ } ICCVID_Info;
+ 
+ 
+@@ -768,6 +774,59 @@ static int ICCVID_CheckMask(const RGBQUAD bmiColors[3], COLORREF redMask, COLORR
+     return FALSE;
+ }
+ 
++static unsigned char nearest_palette_index( const RGBQUAD *palette, unsigned int count,
++                                            int r, int g, int b )
++{
++    unsigned int i, best = 0, best_dist = ~0u;
++
++    for (i = 0; i < count; i++)
++    {
++        int dr = palette[i].rgbRed - r, dg = palette[i].rgbGreen - g, db = palette[i].rgbBlue - b;
++        unsigned int dist = dr * dr + dg * dg + db * db;
++
++        if (dist < best_dist)
++        {
++            best_dist = dist;
++            best = i;
++        }
++    }
++    return best;
++}
++
++/* Rebuild the RGB555 -> index map when the output palette changes. */
++static void update_palette_map( ICCVID_Info *info, const BITMAPINFOHEADER *bih )
++{
++    const RGBQUAD *colors = (const RGBQUAD *)((const BYTE *)bih + bih->biSize);
++    unsigned int count = bih->biClrUsed ? min( bih->biClrUsed, 256 ) : 256;
++    unsigned int i;
++
++    if (info->palette_valid && info->palette_count == count
++            && !memcmp( info->palette, colors, count * sizeof(RGBQUAD) ))
++        return;
++
++    memcpy( info->palette, colors, count * sizeof(RGBQUAD) );
++    info->palette_count = count;
++    for (i = 0; i < ARRAY_SIZE(info->palette_map); i++)
++        info->palette_map[i] = nearest_palette_index( colors, count,
++                ((i >> 10) & 0x1f) << 3 | 4, ((i >> 5) & 0x1f) << 3 | 4, (i & 0x1f) << 3 | 4 );
++    info->palette_valid = TRUE;
++}
++
++static void map_to_palette( ICCVID_Info *info, const BITMAPINFOHEADER *bih, unsigned char *dst,
++                            unsigned int dst_stride, unsigned int width, unsigned int height )
++{
++    unsigned int src_stride = get_stride( width, 32 ), x, y;
++
++    update_palette_map( info, bih );
++    for (y = 0; y < height; y++)
++    {
++        const unsigned char *src = info->frame32 + y * src_stride;
++
++        for (x = 0; x < width; x++, src += 4)
++            dst[y * dst_stride + x] = info->palette_map[(src[2] >> 3) << 10 | (src[1] >> 3) << 5 | src[0] >> 3];
++    }
++}
++
+ static LRESULT decompress_query( ICCVID_Info *info, const ICDECOMPRESSEX *params )
+ {
+     const BITMAPINFO *in = (BITMAPINFO *)params->lpbiSrc, *out = (BITMAPINFO *)params->lpbiDst;
+@@ -801,7 +860,8 @@ static LRESULT decompress_query( ICCVID_Info *info, const ICDECOMPRESSEX *params
+         switch( out->bmiHeader.biCompression )
+         {
+         case BI_RGB:
+-            if ( out->bmiHeader.biBitCount == 16 || out->bmiHeader.biBitCount == 24 || out->bmiHeader.biBitCount == 32 )
++            if ( out->bmiHeader.biBitCount == 8 || out->bmiHeader.biBitCount == 16
++                    || out->bmiHeader.biBitCount == 24 || out->bmiHeader.biBitCount == 32 )
+                 return ICERR_OK;
+             break;
+         case BI_BITFIELDS:
+@@ -873,6 +933,15 @@ static LRESULT decompress_begin( ICCVID_Info *info, ICDECOMPRESSEX *params )
+ 
+     TRACE("bit_per_pixel = %d\n", info->bits_per_pixel);
+ 
++    free( info->frame32 );
++    info->frame32 = NULL;
++    if (info->bits_per_pixel == 8)
++    {
++        if (!(info->frame32 = malloc( get_stride( params->dxDst, 32 ) * params->dyDst )))
++            return ICERR_MEMORY;
++        info->palette_valid = FALSE;
++    }
++
+     if( info->cvinfo )
+         free_cvinfo( info->cvinfo );
+     info->cvinfo = decode_cinepak_init();
+@@ -898,6 +967,15 @@ static LRESULT decompress( ICCVID_Info *info, ICDECOMPRESSEX *params )
+     dst += params->yDst * stride;
+     dst += params->xDst * params->lpbiDst->biBitCount / 8;
+ 
++    if (info->bits_per_pixel == 8)
++    {
++        decode_cinepak( info->cvinfo, params->lpSrc, params->lpbiSrc->biSizeImage, info->frame32,
++                params->dxDst, params->dyDst, get_stride( params->dxDst, 32 ), 32,
++                params->lpbiDst->biHeight < 0 );
++        map_to_palette( info, params->lpbiDst, dst, stride, params->dxDst, params->dyDst );
++        return ICERR_OK;
++    }
++
+     decode_cinepak( info->cvinfo, params->lpSrc, params->lpbiSrc->biSizeImage, dst,
+             params->dxDst, params->dyDst, stride, info->bits_per_pixel, params->lpbiDst->biHeight < 0 );
+ 
+@@ -910,6 +988,7 @@ static LRESULT ICCVID_Close( ICCVID_Info *info )
+         return 0;
+     if( info->cvinfo )
+         free_cvinfo( info->cvinfo );
++    free( info->frame32 );
+     free( info );
+     return 1;
+ }
+@@ -940,6 +1019,8 @@ static LRESULT ICCVID_DecompressEnd( ICCVID_Info *info )
+         free_cvinfo( info->cvinfo );
+         info->cvinfo = NULL;
+     }
++    free( info->frame32 );
++    info->frame32 = NULL;
+     return ICERR_OK;
+ }
+ 
+@@ -990,6 +1071,8 @@ LRESULT WINAPI ICCVID_DriverProc( DWORD_PTR dwDriverId, HDRVR hdrvr, UINT msg,
+         {
+             info->dwMagic = ICCVID_MAGIC;
+             info->cvinfo = NULL;
++            info->frame32 = NULL;
++            info->palette_valid = FALSE;
+         }
+         return (LRESULT) info;
+     }
+diff --git a/dlls/iccvid/tests/iccvid.c b/dlls/iccvid/tests/iccvid.c
+index d534b0db..40c314a3 100644
+--- a/dlls/iccvid/tests/iccvid.c
++++ b/dlls/iccvid/tests/iccvid.c
+@@ -107,7 +107,7 @@ static void test_formats(void)
+ 
+     out->bmiHeader.biBitCount = 8;
+     ret = ICDecompressQuery(hic, in, out);
+-    todo_wine ok(ret == ICERR_OK, "Got %Id.\n", ret);
++    ok(ret == ICERR_OK, "Got %Id.\n", ret);
+     out->bmiHeader.biBitCount = 16;
+     ret = ICDecompressQuery(hic, in, out);
+     ok(ret == ICERR_OK, "Got %Id.\n", ret);
+-- 
+2.43.0
+

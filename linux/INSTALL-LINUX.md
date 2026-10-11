@@ -33,8 +33,12 @@ The script:
 2. copies `MM2.DAT/IDX`, the language pack and the 78 labyrinth videos (`LAB/`) from the disc,
 3. writes the five registry values the original installer writes
    (`HKLM\Software\IVANOFF Interactive\mm2`: `LabPath`, `Language`, `ProgramPath`,
-   `Resource file`, `Resource local file`), and
-4. turns on a **640×480 Wine virtual desktop** for the prefix.
+   `Resource file`, `Resource local file`),
+4. turns on a **640×480 Wine virtual desktop** for the prefix, and
+5. installs the **labyrinth video fix**: patched `winmm.dll` and `iccvid.dll` next to
+   `mm2run.exe`, used for that program only. Without it, the labyrinths are black under
+   every current Wine/Proton. See [`wine-fix/README.md`](wine-fix/README.md);
+   `--no-wine-fix` skips it.
 
 You don't need to run the original InstallShield setup. If you'd rather use it, it
 works under Wine after `wine net start rpcss` and with the Windows version set to XP
@@ -80,8 +84,8 @@ To start it from Steam:
    Steam Play compatibility tool* and choose the Proton you used above.
 3. Launch it once. Steam creates its own prefix under
    `~/.steam/steam/steamapps/compatdata/<number>/`, where `<number>` is the newest folder.
-   Re-run the script with `--prefix` set to that folder, so the registry values and the
-   virtual desktop land in the prefix Steam actually uses.
+   Re-run the script with `--prefix` set to that folder, so the registry values, the
+   virtual desktop and the labyrinth fix land in the prefix Steam actually uses.
 
 ## Known issues and fixes
 
@@ -90,6 +94,7 @@ To start it from Steam:
 | Black screen, game audio plays | The game draws on the Windows desktop, not its own window | Use the virtual desktop. The script sets this up; or run `wine explorer /desktop=mm2,640x480 mm2run.exe` |
 | Game freezes on the first spoken line | No working audio output; it waits for speech to finish | Make sure PulseAudio/PipeWire is running. Under plain ALSA with no device, the game hangs |
 | Clicks are ignored | Game window doesn't have focus, or a line is still being spoken | Click once into the window; wait for the subtitle to finish |
+| Labyrinth is black or full of coloured noise | Two Wine bugs (`mmioSetBuffer` file position, no 8-bit Cinepak output) | Install the fix in `wine-fix/` (the script does this by default) |
 | InstallShield sits at "forbereder…" forever | Wine's RPC service didn't start | `wine net start rpcss`, then run `SETUP.EXE` again |
 | "…kan inte köras under Windows NT" (Swedish 2006 setup) | Old OS check in the installer | `winecfg -v winxp` before running setup |
 
@@ -97,17 +102,19 @@ To start it from Steam:
 
 - Saves: `C:\ProgramData\IVANOFF\MM2\2.0\SavedGame<N>.m2s`
   (i.e. `<prefix>/drive_c/ProgramData/IVANOFF/MM2/2.0/`), plus `settings.dat` next to them.
-- Labyrinth videos: Cinepak AVI, 480×360. Wine's built-in `iccvid.dll` decodes them.
+- Labyrinth videos: Cinepak AVI, 480×360, decoded to 8-bit by the patched `iccvid.dll`.
 
 ## What was verified
 
 Tested with Wine 9.0 and with GE-Proton10-25, on Xvfb with a PulseAudio null sink:
-
 
 - Intro FLC animations, Danish speech and subtitles (æ/ø/å render correctly)
 - Navigation (hall → portrait gallery)
 - Options menu (candle icon), save to slot 1, quit, restart, load slot 1
 - Fresh 64-bit prefix, Wine's default Windows 10 mode, **no CD drive mapped**
 - Proton: installed with `--proton`, then intro, navigation, save, a full quit and relaunch, then load
+- Both labyrinths (rooms 40 and 42) under GE-Proton10-25 with the fix: video plays,
+  moving forward works, colours are right. Reached by loading a save edited with
+  `tools/m2s_setroom.py`, not by playing up to them.
 
-Not verified yet: the labyrinth sequences, the minigames, or a complete playthrough.
+Not verified yet: finding the way through a labyrinth, the minigames, or a complete playthrough.

@@ -1,0 +1,266 @@
+From e0810c63e1b43248c51efdc03bc6e7de96c7fd89 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sun, 11 Oct 2026 05:55:55 +0000
+Subject: [PATCH] winmm, iccvid: Backport mmioSetBuffer position and 8-bit
+ Cinepak output fixes to 10.0
+
+---
+ dlls/iccvid/iccvid.c    | 91 ++++++++++++++++++++++++++++++++++++++++-
+ dlls/winmm/mmio.c       | 11 +++++
+ dlls/winmm/tests/mmio.c | 54 ++++++++++++++++++++++++
+ 3 files changed, 155 insertions(+), 1 deletion(-)
+
+diff --git a/dlls/iccvid/iccvid.c b/dlls/iccvid/iccvid.c
+index 56a882af..7fa423ef 100644
+--- a/dlls/iccvid/iccvid.c
++++ b/dlls/iccvid/iccvid.c
+@@ -79,6 +79,12 @@ typedef struct _ICCVID_Info
+     DWORD         dwMagic;
+     int           bits_per_pixel;
+     cinepak_info *cvinfo;
++    /* 8-bit output: frames are decoded at 32 bpp, then mapped to the palette */
++    unsigned char *frame32;
++    RGBQUAD       palette[256];
++    unsigned int  palette_count;
++    BOOL          palette_valid;
++    unsigned char palette_map[32768]; /* RGB555 -> palette index */
+ } ICCVID_Info;
+ 
+ 
+@@ -768,6 +774,58 @@ static inline int ICCVID_CheckMask(RGBQUAD bmiColors[3], COLORREF redMask, COLOR
+     return FALSE;
+ }
+ 
++static unsigned char nearest_palette_index( const RGBQUAD *palette, unsigned int count,
++                                            int r, int g, int b )
++{
++    unsigned int i, best = 0, best_dist = ~0u;
++
++    for (i = 0; i < count; i++)
++    {
++        int dr = palette[i].rgbRed - r, dg = palette[i].rgbGreen - g, db = palette[i].rgbBlue - b;
++        unsigned int dist = dr * dr + dg * dg + db * db;
++
++        if (dist < best_dist)
++        {
++            best_dist = dist;
++            best = i;
++        }
++    }
++    return best;
++}
++
++static void update_palette_map( ICCVID_Info *info, const BITMAPINFOHEADER *bih )
++{
++    const RGBQUAD *colors = (const RGBQUAD *)((const BYTE *)bih + bih->biSize);
++    unsigned int count = bih->biClrUsed ? min( bih->biClrUsed, 256 ) : 256;
++    unsigned int i;
++
++    if (info->palette_valid && info->palette_count == count
++            && !memcmp( info->palette, colors, count * sizeof(RGBQUAD) ))
++        return;
++
++    memcpy( info->palette, colors, count * sizeof(RGBQUAD) );
++    info->palette_count = count;
++    for (i = 0; i < ARRAY_SIZE(info->palette_map); i++)
++        info->palette_map[i] = nearest_palette_index( colors, count,
++                ((i >> 10) & 0x1f) << 3 | 4, ((i >> 5) & 0x1f) << 3 | 4, (i & 0x1f) << 3 | 4 );
++    info->palette_valid = TRUE;
++}
++
++static void map_to_palette( ICCVID_Info *info, const BITMAPINFOHEADER *bih, unsigned char *dst,
++                            unsigned int width, unsigned int height )
++{
++    unsigned int src_stride = get_stride( width, 32 ), dst_stride = get_stride( width, 8 ), x, y;
++
++    update_palette_map( info, bih );
++    for (y = 0; y < height; y++)
++    {
++        const unsigned char *src = info->frame32 + y * src_stride;
++
++        for (x = 0; x < width; x++, src += 4)
++            dst[y * dst_stride + x] = info->palette_map[(src[2] >> 3) << 10 | (src[1] >> 3) << 5 | src[0] >> 3];
++    }
++}
++
+ static LRESULT ICCVID_DecompressQuery( ICCVID_Info *info, LPBITMAPINFO in, LPBITMAPINFO out )
+ {
+     TRACE("ICM_DECOMPRESS_QUERY %p %p %p\n", info, in, out);
+@@ -800,7 +858,8 @@ static LRESULT ICCVID_DecompressQuery( ICCVID_Info *info, LPBITMAPINFO in, LPBIT
+         switch( out->bmiHeader.biCompression )
+         {
+         case BI_RGB:
+-            if ( out->bmiHeader.biBitCount == 16 || out->bmiHeader.biBitCount == 24 || out->bmiHeader.biBitCount == 32 )
++            if ( out->bmiHeader.biBitCount == 8 || out->bmiHeader.biBitCount == 16
++                    || out->bmiHeader.biBitCount == 24 || out->bmiHeader.biBitCount == 32 )
+                 return ICERR_OK;
+             break;
+         case BI_BITFIELDS:
+@@ -870,6 +929,15 @@ static LRESULT ICCVID_DecompressBegin( ICCVID_Info *info, LPBITMAPINFO in, LPBIT
+ 
+     TRACE("bit_per_pixel = %d\n", info->bits_per_pixel);
+ 
++    free( info->frame32 );
++    info->frame32 = NULL;
++    if (info->bits_per_pixel == 8)
++    {
++        if (!(info->frame32 = malloc( get_stride( in->bmiHeader.biWidth, 32 ) * abs( in->bmiHeader.biHeight ) )))
++            return ICERR_MEMORY;
++        info->palette_valid = FALSE;
++    }
++
+     if( info->cvinfo )
+         free_cvinfo( info->cvinfo );
+     info->cvinfo = decode_cinepak_init();
+@@ -896,6 +964,14 @@ static LRESULT ICCVID_Decompress( ICCVID_Info *info, ICDECOMPRESS *icd, DWORD si
+     height = icd->lpbiInput->biHeight;
+     inverted = -icd->lpbiOutput->biHeight == height;
+ 
++    if (info->bits_per_pixel == 8)
++    {
++        decode_cinepak(info->cvinfo, icd->lpInput, icd->lpbiInput->biSizeImage,
++                       info->frame32, width, height, 32, inverted);
++        map_to_palette(info, icd->lpbiOutput, icd->lpOutput, width, height);
++        return ICERR_OK;
++    }
++
+     decode_cinepak(info->cvinfo, icd->lpInput, icd->lpbiInput->biSizeImage,
+                    icd->lpOutput, width, height, info->bits_per_pixel, inverted);
+ 
+@@ -923,6 +999,14 @@ static LRESULT ICCVID_DecompressEx( ICCVID_Info *info, ICDECOMPRESSEX *icd, DWOR
+     height = icd->lpbiSrc->biHeight;
+     inverted = -icd->lpbiDst->biHeight == height;
+ 
++    if (info->bits_per_pixel == 8)
++    {
++        decode_cinepak(info->cvinfo, icd->lpSrc, icd->lpbiSrc->biSizeImage,
++                       info->frame32, width, height, 32, inverted);
++        map_to_palette(info, icd->lpbiDst, icd->lpDst, width, height);
++        return ICERR_OK;
++    }
++
+     decode_cinepak(info->cvinfo, icd->lpSrc, icd->lpbiSrc->biSizeImage,
+                    icd->lpDst, width, height, info->bits_per_pixel, inverted);
+ 
+@@ -935,6 +1019,7 @@ static LRESULT ICCVID_Close( ICCVID_Info *info )
+         return 0;
+     if( info->cvinfo )
+         free_cvinfo( info->cvinfo );
++    free( info->frame32 );
+     free( info );
+     return 1;
+ }
+@@ -965,6 +1050,8 @@ static LRESULT ICCVID_DecompressEnd( ICCVID_Info *info )
+         free_cvinfo( info->cvinfo );
+         info->cvinfo = NULL;
+     }
++    free( info->frame32 );
++    info->frame32 = NULL;
+     return ICERR_OK;
+ }
+ 
+@@ -1000,6 +1087,8 @@ LRESULT WINAPI ICCVID_DriverProc( DWORD_PTR dwDriverId, HDRVR hdrvr, UINT msg,
+         {
+             info->dwMagic = ICCVID_MAGIC;
+             info->cvinfo = NULL;
++            info->frame32 = NULL;
++            info->palette_valid = FALSE;
+         }
+         return (LRESULT) info;
+     }
+diff --git a/dlls/winmm/mmio.c b/dlls/winmm/mmio.c
+index 78ad7da3..91e48423 100644
+--- a/dlls/winmm/mmio.c
++++ b/dlls/winmm/mmio.c
+@@ -601,6 +601,17 @@ static MMRESULT MMIO_SetBuffer(WINE_MMIO* wm, void* pchBuffer, LONG cchBuffer,
+     if (MMIO_Flush(wm, 0) != MMSYSERR_NOERROR)
+ 	return MMIOERR_CANNOTWRITE;
+ 
++    /* The new buffer starts at the current logical position, which can lag
++     * behind the disk offset when the old buffer was read ahead. */
++    if (wm->info.pchBuffer && wm->info.fccIOProc != FOURCC_MEM)
++    {
++        LONG pos = wm->info.lBufOffset + (wm->info.pchNext - wm->info.pchBuffer);
++
++        if (pos != wm->info.lDiskOffset &&
++            send_message(wm->ioProc, &wm->info, MMIOM_SEEK, pos, SEEK_SET, FALSE) == -1)
++            return MMIOERR_CANNOTSEEK;
++    }
++
+     /* free previous buffer if allocated */
+     if (wm->info.dwFlags & MMIO_ALLOCBUF) {
+         free(wm->info.pchBuffer);
+diff --git a/dlls/winmm/tests/mmio.c b/dlls/winmm/tests/mmio.c
+index df4de553..0a19adf5 100644
+--- a/dlls/winmm/tests/mmio.c
++++ b/dlls/winmm/tests/mmio.c
+@@ -1120,6 +1120,59 @@ static void test_riff_write(void)
+     DeleteFileA("test_write.wav");
+ }
+ 
++static void test_mmioSetBuffer_position(void)
++{
++    char test_file[MAX_PATH];
++    char buffer[8], buffer2[16];
++    MMIOINFO mmio;
++    HMMIO hmmio;
++    LONG pos;
++    MMRESULT res;
++
++    if (!create_test_file(test_file)) return;
++
++    memset(&mmio, 0, sizeof(mmio));
++    mmio.fccIOProc = FOURCC_DOS;
++    mmio.pchBuffer = buffer;
++    mmio.cchBuffer = sizeof(buffer);
++    hmmio = mmioOpenA(test_file, &mmio, MMIO_READ);
++    ok(hmmio != 0, "mmioOpenA error %u\n", mmio.wErrorRet);
++    if (hmmio == NULL) {
++        DeleteFileA(test_file);
++        return;
++    }
++
++    /* fill the buffer, which moves the disk offset past it */
++    res = mmioGetInfo(hmmio, &mmio, 0);
++    ok(res == MMSYSERR_NOERROR, "expected 0, got %d\n", res);
++    res = mmioAdvance(hmmio, &mmio, MMIO_READ);
++    ok(res == MMSYSERR_NOERROR, "mmioAdvance failed %x\n", res);
++    res = mmioSetInfo(hmmio, &mmio, 0);
++    ok(res == MMSYSERR_NOERROR, "expected 0, got %d\n", res);
++
++    /* seek inside the loaded buffer */
++    pos = mmioSeek(hmmio, 3, SEEK_SET);
++    ok(pos == 3, "expected 3, got %ld\n", pos);
++
++    /* a new buffer starts at the current position, not at the disk offset */
++    res = mmioSetBuffer(hmmio, buffer2, sizeof(buffer2), 0);
++    ok(res == MMSYSERR_NOERROR, "mmioSetBuffer error %u\n", res);
++    res = mmioGetInfo(hmmio, &mmio, 0);
++    ok(res == MMSYSERR_NOERROR, "expected 0, got %d\n", res);
++    ok(mmio.lBufOffset == 3, "expected 3, got %ld\n", mmio.lBufOffset);
++    pos = mmioSeek(hmmio, 0, SEEK_CUR);
++    ok(pos == 3, "expected 3, got %ld\n", pos);
++
++    res = mmioAdvance(hmmio, &mmio, MMIO_READ);
++    ok(res == MMSYSERR_NOERROR, "mmioAdvance failed %x\n", res);
++    ok(mmio.lBufOffset == 3, "expected 3, got %ld\n", mmio.lBufOffset);
++    ok(mmio.pchEndRead - mmio.pchBuffer == sizeof(buffer2), "got %d\n", (int)(mmio.pchEndRead - mmio.pchBuffer));
++    ok(!memcmp(buffer2, (char *)RIFF_buf + 3, sizeof(buffer2)), "read data from the wrong position\n");
++
++    mmioClose(hmmio, 0);
++    DeleteFileA(test_file);
++}
++
+ START_TEST(mmio)
+ {
+     /* Make it possible to run the tests against a specific AVI file in
+@@ -1139,5 +1192,6 @@ START_TEST(mmio)
+     test_mmioSeek();
+     test_mmio_end_of_file();
+     test_mmio_buffer_pointer();
++    test_mmioSetBuffer_position();
+     test_riff_write();
+ }
+-- 
+2.43.0
+
