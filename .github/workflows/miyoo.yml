@@ -39,17 +39,17 @@ jobs:
         with:
           repository: scummvm/scummvm
           ref: ${{ env.SCUMMVM_REF }}
-          path: scummvm
+          path: scummvm-src
           fetch-depth: 1
 
       - name: Show versions
         run: |
-          git -C scummvm log -1 --oneline
+          git -C scummvm-src log -1 --oneline
           ls /opt/miyoomini-toolchain/usr/bin/arm-linux-gnueabihf-g++
 
       - name: Build
         run: |
-          if ! miyoo/build.sh scummvm dist > build.log 2>&1; then
+          if ! miyoo/build.sh scummvm-src dist > build.log 2>&1; then
             # The end of the log as an annotation, readable without the log archive.
             msg=$(grep -E "error|Error|ERROR|not found|No such" build.log | tail -15; echo ---; tail -15 build.log)
             msg=${msg//'%'/'%25'}; msg=${msg//$'\n'/'%0A'}
