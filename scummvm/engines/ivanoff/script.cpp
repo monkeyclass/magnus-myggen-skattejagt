@@ -81,29 +81,15 @@ bool VarRef::eq(int32 value) const {
 	return (callSlot(0x0c, 1, &a) & 0xff) != 0;
 }
 
-uint32 VarRef::x54(int32 a, int32 b) {
-	uint32 args[2] = { (uint32)a, (uint32)b };
-	return callSlot(0x54, 2, args);
-}
-
-uint32 VarRef::x5c(int32 a, int32 b) {
-	uint32 args[2] = { (uint32)a, (uint32)b };
-	return callSlot(0x5c, 2, args);
-}
-
-Common::String VarRef::getString(uint32 slot, int32 a) {
+void VarRef::callCopySlot(uint32 slot) {
+	// The copy is a variable object (0x1c bytes, FUN_0047cad0) with a
+	// CString at +0x0c; the caller destroys it.
 	Emu::Memory &mem = _machine->mem();
-	uint32 out = mem.alloc(4);
-	mem.w32(out, 0);
-	uint32 args[2] = { out, (uint32)a };
-	callSlot(slot, 2, args);
-	Common::String str;
-	if (mem.r32(out)) {
-		str = mem.readString(mem.r32(out));
-		_machine->cpu().call(kCStringDtor, out);
-	}
+	uint32 out = mem.alloc(0x20);
+	uint32 arg = out;
+	callSlot(slot, 1, &arg);
+	_machine->cpu().call(kCStringDtor, out + 0xc);
 	mem.free(out);
-	return str;
 }
 
 // --- Script ---

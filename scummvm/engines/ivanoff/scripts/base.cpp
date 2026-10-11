@@ -46,7 +46,7 @@ void ObjectScript::handle(Message &msg) {
 			if (next)
 				cmd(kSelf, kCmdPlay, next);
 			if (msg.p2 != 0) {
-				var(3, kGameState).getString(0x5c, 0);
+				var(3, kGameState).postDecrement();
 				send(msg.p2, 0x30, getId(), (uint16)msg.p1);
 			}
 		}
@@ -61,7 +61,7 @@ void ObjectScript::handle(Message &msg) {
 		// Play animation p1 (p2 = (animation to stop << 16) | ..., passed on as the notification).
 		if (var(0x4a).get() != 0) {
 			if ((int16)msg.p2 != 0)
-				var(3, kGameState).getString(0x54, 0);
+				var(3, kGameState).postIncrement();
 		} else {
 			if (var(0x16).get() != 0)
 				return;

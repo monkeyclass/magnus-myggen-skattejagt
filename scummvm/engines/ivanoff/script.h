@@ -60,16 +60,16 @@ public:
 	void remove(int32 key);
 	/** +0x0c-+0x1c: comparisons with a number. */
 	bool eq(int32 value) const;
-	/** +0x54: map variables, (key, value). */
-	uint32 x54(int32 a, int32 b);
-	/** +0x5c: map variables, (key, value). */
-	uint32 x5c(int32 a, int32 b);
 
-	/**
-	 * +0x54 / +0x5c: methods returning an MFC CString by value (hidden
-	 * first argument). Returns the string; the temporary is released.
-	 */
-	Common::String getString(uint32 slot, int32 a);
+	/** +0x54: v++ (the original returns a copy of the old value, discarded by the game). */
+	void postIncrement() { callCopySlot(0x54); }
+	/** +0x5c: v-- */
+	void postDecrement() { callCopySlot(0x5c); }
+	/** Deprecated name: getString(0x54, x) is postIncrement(), getString(0x5c, x) postDecrement(). */
+	Common::String getString(uint32 slot, int32) { callCopySlot(slot); return Common::String(); }
+
+	/** Calls a method returning a variable by value (hidden first argument), and destroys the copy. */
+	void callCopySlot(uint32 slot);
 
 	/** Calls the method at vtable offset slot with this variable as this. */
 	uint32 callSlot(uint32 slot, uint32 nargs = 0, const uint32 *args = nullptr) const;

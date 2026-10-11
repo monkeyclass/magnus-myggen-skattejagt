@@ -150,7 +150,7 @@ void Object99::handle(Message &msg) {
 				cmd(kSelf, kCmdStop, var(0x30).get());
 				var(0x2d).set(0);
 				if ((uint16)msg.p1 == 0x62) {
-					var(0x34, 0x62).getString(0x54, 0);
+					var(0x34, 0x62).postIncrement();
 				} else {
 					var(0x2d, msg.p1).set(0);
 					var(0x2d, 0x62).set(1);

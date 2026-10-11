@@ -60,7 +60,7 @@ original's code). Mapping to the native API:
 | `(*v->vtbl->get)(v)` | `v.get()` |
 | `(*v->vtbl->set)(v,x)`, `add`, `sub` | `v.set(x)`, `v.add(n)`, `v.sub(n)` |
 | `(*v->vtbl->at)(v,k)` | `v.at(k)` (element of a map variable) |
-| `(*v->vtbl->x54)(v,tmp,a)` + CString destructor `FUN_0049fec5` | `v.getString(0x54, a)` (same for `x5c`) |
+| `(*v->vtbl->x54)(v,tmp,...)` + destructor `FUN_0049fec5(tmp+0xc)` | `v.postIncrement()` (`v++`; the copy it returns is discarded); `x5c`: `v.postDecrement()` |
 | `setCursor(this,c)` | `setCursor(c)` |
 | `newMsg(this,t,m,p1,p2,p3)` + `startTimer(this,id,ms,msg)` | `startTimer(id, ms, t, m, p1, p2, p3)` |
 | `newCmd(...)` + `startTimer` | `startCmdTimer(id, ms, t, c, child, p1, p2, p3)` |
