@@ -192,6 +192,9 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 		} else if (!strcmp(kind, "move")) {
 			_system->warpMouse(x, y);
 			onMouseMove(x, y);
+		} else if (!strcmp(kind, "room")) {
+			Message m(kGameState, 0, kMsgGotoRoom, x);
+			_world->deliver(nullptr, m);
 		} else if (!strcmp(kind, "dump")) {
 			Common::Array<Sprite *> list;
 			collectSprites(list);
@@ -220,8 +223,11 @@ void IvanoffEngine::initPalette() {
 
 void IvanoffEngine::setGamePalette(const byte *palette) {
 	// FUN_0047f4f0 copies 236 entries, starting at entry 10.
-	memcpy(_palette + 10 * 3, palette + 10 * 3, 236 * 3);
-	_paletteDirty = true;
+	if (memcmp(_palette + 10 * 3, palette + 10 * 3, 236 * 3)) {
+		memcpy(_palette + 10 * 3, palette + 10 * 3, 236 * 3);
+		_paletteDirty = true;
+		_paletteRevision++;
+	}
 }
 
 // --- cursors ---
@@ -283,8 +289,21 @@ void IvanoffEngine::applyCursor(uint32 cursor) {
 	else if (cursor == 0x80000003 || (cursor & 0x80000000))
 		c = _defaultCursor;
 	if (!c) {
-		// [unverified] Other values name an animated sprite cursor (FUN_0047e040).
-		debug(1, "Sprite cursor %08x not implemented", cursor);
+		// Other values name a child of the engine's input object, drawn
+		// with its top-left corner at the mouse position (FUN_0047e040).
+		GameObject *k = _machine->kernel();
+		Sprite *sp = k ? dynamic_cast<Sprite *>(k->getChild(cursor & 0xffff)) : nullptr;
+		if (sp) {
+			sp->load();
+			const Graphics::Surface *surf = sp->getSurface();
+			if (surf) {
+				int key = sp->getTransparent() >= 0 ? sp->getTransparent() : 250;
+				CursorMan.replaceCursor(*surf, 0, 0, key);
+				CursorMan.showMouse(true);
+				return;
+			}
+		}
+		warning("Cursor %08x not found", cursor);
 		c = _defaultCursor;
 	}
 
@@ -421,6 +440,15 @@ Child *IvanoffEngine::hitTest(int x, int y, uint32 mask) {
 	return nullptr;
 }
 
+/** The original's key for a child: (child id << 16) | owner id. */
+static int32 childKey(Child *c) {
+	return c ? (int32)(((uint32)c->getId() << 16) | c->getOwner()->getId()) : 0;
+}
+
+static int32 sendTo(Child *c, uint16 msg, int32 p1, int32 p2, int32 p3) {
+	return c->getOwner()->send(kSelf, msg, p1, p2, p3);
+}
+
 void IvanoffEngine::onMouseMove(int x, int y) {
 	// FUN_0047f570 / FUN_0047f2b0
 	_mouseX = x;
@@ -430,16 +458,56 @@ void IvanoffEngine::onMouseMove(int x, int y) {
 
 	Child *c = hitTest(x, y, kFlagInputMask);
 	if (c != _hover) {
+		int32 oldKey = childKey(_hover), newKey = childKey(c);
 		if (_hover && (_hover->getFlags() & kFlagEnterLeave))
-			_hover->getOwner()->send(kSelf, kMsgMouseLeave, _hover->getId(), 0, _hover->localCoords(x, y));
+			sendTo(_hover, kMsgMouseLeave, _hover->getId(), newKey, _hover->localCoords(x, y));
 		if (c && (c->getFlags() & kFlagEnterLeave))
-			c->getOwner()->send(kSelf, kMsgMouseEnter, c->getId(), 0, c->localCoords(x, y));
+			sendTo(c, kMsgMouseEnter, c->getId(), oldKey, c->localCoords(x, y));
 		_hover = c;
 	}
+	dragOver(x, y);
 	if (_hover && (_hover->getFlags() & kFlagMouseMove))
-		_hover->getOwner()->send(kSelf, kMsgMouseMove, _hover->getId(), (y << 16) | (x & 0xffff),
-		                         _hover->localCoords(x, y));
+		sendTo(_hover, kMsgMouseMove, _hover->getId(), (y << 16) | (x & 0xffff), _hover->localCoords(x, y));
 	updateCursor();
+}
+
+void IvanoffEngine::dragOver(int x, int y) {
+	// FUN_0047e480: tell the dragged child's owner whether it is over a target.
+	if (!_dragged)
+		return;
+	if (_hover && sendTo(_hover, kMsgDropTest, childKey(_dragged), _hover->getId(), _hover->localCoords(x, y)))
+		sendTo(_dragged, kMsgDragEnd, _dragged->getId(), childKey(_hover), _hover->localCoords(x, y));
+	else
+		sendTo(_dragged, kMsgDragEnd, _dragged->getId(), 0, 0);
+}
+
+void IvanoffEngine::endDrag() {
+	// FUN_004817d0
+	_dragged = nullptr;
+}
+
+bool IvanoffEngine::dropOnClick(int x, int y) {
+	// FUN_0047e590: flag 0x100 children are picked up by one click and
+	// dropped by the next. Returns whether the click was used.
+	if (!_dragged || !(_dragged->getFlags() & kFlagDropTarget))
+		return false;
+	bool alt = (_dragged->getFlags() & 0x300) == 0x300;
+	Child *d = _dragged;
+	if (_hover) {
+		int32 local = _hover->localCoords(x, y);
+		bool ok = true;
+		if (alt)
+			ok = sendTo(_hover, kMsgDropTestAlt, childKey(d), _hover->getId(), local) != 0;
+		if (ok && sendTo(_hover, kMsgDropTest, childKey(d), _hover->getId(), local)) {
+			sendTo(d, kMsgDropped, d->getId(), childKey(_hover), local);
+			if (sendTo(_hover, kMsgDrop, childKey(d), _hover->getId(), local) == 0)
+				endDrag();
+			return true;
+		}
+	}
+	if (!alt && sendTo(d, kMsgClickNoDrag, d->getId(), 0, 0) == 0)
+		endDrag();
+	return true;
 }
 
 void IvanoffEngine::onButton(int x, int y, bool down, bool right) {
@@ -448,19 +516,46 @@ void IvanoffEngine::onButton(int x, int y, bool down, bool right) {
 		// FUN_0047f800
 		Child *c = hitTest(x, y, 0x404);
 		if (c && (c->getFlags() & kFlagRightClick))
-			c->getOwner()->send(kSelf, kMsgRightClick, c->getId(), pos, c->localCoords(x, y));
+			sendTo(c, kMsgRightClick, c->getId(), pos, c->localCoords(x, y));
 		return;
 	}
 	if (down) {
-		// FUN_0047f630. [unverified] Dragging (flags 0x80/0x100) is not implemented yet.
+		// FUN_0047f630
 		Child *c = hitTest(x, y, 0x581);
-		if (c && (c->getFlags() & kFlagClick))
-			c->getOwner()->send(kSelf, kMsgClick, c->getId(), pos, c->localCoords(x, y));
+		if (!c) {
+			dropOnClick(x, y);
+			return;
+		}
+		if (c->getId() == 0 || c->_busy || dropOnClick(x, y))
+			return;
+		if ((c->getFlags() & (kFlagDraggable | kFlagDropTarget)) && !_dragged &&
+		    sendTo(c, kMsgCanDrag, c->getId(), 0, 0) == 0) {
+			// FUN_00481710: start dragging.
+			uint16 msg = (c->getFlags() & kFlagDraggable) ? kMsgDragStart : kMsgDragStartAlt;
+			sendTo(c, msg, c->getId(), pos, c->localCoords(x, y));
+			_dragged = c;
+			dragOver(x, y);
+		}
+		if (c->getFlags() & kFlagClick)
+			sendTo(c, kMsgClick, c->getId(), pos, c->localCoords(x, y));
 	} else {
 		// FUN_0047f740
 		Child *c = hitTest(x, y, 0x402);
 		if (c && (c->getFlags() & kFlagButtonUp))
-			c->getOwner()->send(kSelf, kMsgButtonUp, c->getId(), pos, c->localCoords(x, y));
+			sendTo(c, kMsgButtonUp, c->getId(), pos, c->localCoords(x, y));
+
+		// FUN_0047e7e0: release a press-and-drag child.
+		if (_dragged && (_dragged->getFlags() & kFlagDraggable)) {
+			Child *d = _dragged;
+			if (_hover && sendTo(_hover, kMsgDropTest, childKey(d), _hover->getId(), _hover->localCoords(x, y))) {
+				int32 local = _hover->localCoords(x, y);
+				sendTo(d, kMsgDropped, d->getId(), childKey(_hover), local);
+				sendTo(_hover, kMsgDrop, childKey(d), _hover->getId(), local);
+			} else {
+				sendTo(d, kMsgClickNoDrag, d->getId(), 0, 0);
+			}
+			endDrag();
+		}
 	}
 }
 

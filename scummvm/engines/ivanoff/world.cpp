@@ -218,8 +218,9 @@ void GameObject::dispatchChildCommand(Message &msg) {
 		else
 			debug(2, "Object %d: command %d for missing child %d", _id, msg.cmd, target);
 	} else {
+		// A type (0xfdff-0xfe05) or a tag set with command 0x29 (FUN_00477910).
 		for (uint i = 0; i < _children.size(); i++)
-			if (_children[i]->getType() == target)
+			if (_children[i]->testBit(target))
 				_children[i]->handleCommand(msg);
 	}
 }

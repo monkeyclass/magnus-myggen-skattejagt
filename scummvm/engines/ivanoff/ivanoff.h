@@ -68,6 +68,9 @@ public:
 
 	/** FUN_00477120: the cursor shown everywhere (0 = per sprite). */
 	void setGlobalCursor(uint32 cursor);
+	const byte *getScreenPalette() const { return _palette; }
+	/** Changes whenever the palette changes. */
+	uint32 getPaletteRevision() const { return _paletteRevision; }
 	/** Command 10: entries 10-245 of the screen palette from an image's palette. */
 	void setGamePalette(const byte *palette);
 
@@ -107,6 +110,7 @@ private:
 	Graphics::Surface _screen;
 	byte _palette[256 * 3];
 	bool _paletteDirty = true;
+	uint32 _paletteRevision = 1;
 
 	Common::HashMap<uint32, Graphics::Cursor *> _cursors;
 	Common::Array<Graphics::WinCursorGroup *> _cursorGroups;
@@ -117,6 +121,10 @@ private:
 	int _mouseX = 0, _mouseY = 0;
 
 	Child *_hover = nullptr;
+	Child *_dragged = nullptr; ///< input manager +0x34
+	void dragOver(int x, int y);
+	bool dropOnClick(int x, int y);
+	void endDrag();
 
 	struct Attached {
 		Sprite *sprite;

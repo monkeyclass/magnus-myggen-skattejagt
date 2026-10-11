@@ -27,6 +27,7 @@
 #include "image/bmp.h"
 #include "graphics/font.h"
 #include "graphics/fontman.h"
+#include "video/avi_decoder.h"
 #include "video/flic_decoder.h"
 
 #include "ivanoff/ivanoff.h"
@@ -76,10 +77,14 @@ void Child::handleCommand(Message &msg) {
 	case kCmdGetFlags:
 		msg.result = _flags;
 		break;
-	case 0x29:
-		if (!testBit(bit))
+	case 0x29: {
+		bool found = false;
+		for (uint i = 0; i < _bits.size(); i++)
+			found = found || _bits[i] == bit;
+		if (!found)
 			_bits.push_back(bit);
 		break;
+	}
 	case 0x2a:
 		for (uint i = 0; i < _bits.size(); i++) {
 			if (_bits[i] == bit) {
@@ -101,6 +106,9 @@ void Child::handleCommand(Message &msg) {
 }
 
 bool Child::testBit(uint16 bit) const {
+	// FUN_00477910: the type counts as a tag.
+	if (bit == _type)
+		return true;
 	for (uint i = 0; i < _bits.size(); i++)
 		if (_bits[i] == bit)
 			return true;
@@ -371,15 +379,12 @@ void Anim::handleCommand(Message &msg) {
 	}
 }
 
-void Anim::load() {
-	// FUN_004782e0
-	if (_loaded)
-		return;
+Video::VideoDecoder *Anim::openDecoder() {
 	uint16 res = _altResource ? _altResource : _id;
 	Common::SeekableReadStream *stream = g_engine->_resources.get(res);
 	if (!stream) {
 		warning("Anim %d: no resource", res);
-		return;
+		return nullptr;
 	}
 
 	// The FLC header: size, magic, frames, width, height, depth, flags, speed.
@@ -392,13 +397,26 @@ void Anim::load() {
 	_period = speed ? speed : 50;
 	stream->seek(0);
 
-	_decoder = new Video::FlicDecoder();
-	if (!_decoder->loadStream(stream)) {
+	Video::FlicDecoder *dec = new Video::FlicDecoder();
+	if (!dec->loadStream(stream)) {
 		warning("Anim %d: can't decode", res);
-		delete _decoder;
-		_decoder = nullptr;
-		return;
+		delete dec;
+		return nullptr;
 	}
+	return dec;
+}
+
+void Anim::load() {
+	// FUN_004782e0
+	if (_loaded)
+		return;
+	loadFrames();
+}
+
+void Anim::loadFrames() {
+	_decoder = openDecoder();
+	if (!_decoder)
+		return;
 
 	_frameCount = _decoder->getFrameCount();
 	_width = _decoder->getWidth();
@@ -413,7 +431,7 @@ void Anim::load() {
 			if (_decoder->hasDirtyPalette() || i == 0)
 				memcpy(_palette, _decoder->getPalette(), sizeof(_palette));
 			Graphics::Surface *copy = new Graphics::Surface();
-			copy->copyFrom(*s);
+			convertFrame(*s, *copy);
 			_frames.push_back(copy);
 		}
 		delete _decoder;
@@ -432,6 +450,11 @@ void Anim::unload() {
 	// FUN_0047b3b0
 	if (_visible)
 		stop();
+	releaseFrames();
+	_loaded = false;
+}
+
+void Anim::releaseFrames() {
 	for (uint i = 0; i < _frames.size(); i++) {
 		_frames[i]->free();
 		delete _frames[i];
@@ -445,7 +468,6 @@ void Anim::unload() {
 	delete _decoder;
 	_decoder = nullptr;
 	_decodedFrame = -1;
-	_loaded = false;
 }
 
 void Anim::decodeTo(int frame) {
@@ -465,7 +487,11 @@ void Anim::decodeTo(int frame) {
 			memcpy(_palette, _decoder->getPalette(), sizeof(_palette));
 	}
 	if (s)
-		_current->copyFrom(*s);
+		convertFrame(*s, *_current);
+}
+
+void Anim::convertFrame(const Graphics::Surface &src, Graphics::Surface &dst) {
+	dst.copyFrom(src);
 }
 
 const Graphics::Surface *Anim::getSurface() const {
@@ -980,37 +1006,95 @@ void TextSprite::render() {
 
 // --- VideoSprite (FUN_0047af30) ---
 
-VideoSprite::VideoSprite(uint16 id, int32 transparent, const Common::String &file, uint32 flags, int32 param) :
-	Sprite(id, kTypeVideo, transparent, flags, param), _file(file) {
+void VideoSprite::convertFrame(const Graphics::Surface &src, Graphics::Surface &dst) {
+	if (src.format.bytesPerPixel == 1) {
+		dst.copyFrom(src);
+		return;
+	}
+	if (dst.w != src.w || dst.h != src.h || dst.format.bytesPerPixel != 1) {
+		dst.free();
+		dst.create(src.w, src.h, Graphics::PixelFormat::createFormatCLUT8());
+	}
+	if (_lutRevision != g_engine->getPaletteRevision() || _lut.empty()) {
+		// Filled on demand: RGB565 -> nearest of the game's colours (10-245).
+		_lut.resize(65536);
+		for (uint i = 0; i < 65536; i++)
+			_lut[i] = -1;
+		_lutRevision = g_engine->getPaletteRevision();
+	}
+	const byte *pal = g_engine->getScreenPalette();
+	const Graphics::PixelFormat &f = src.format;
+	for (int y = 0; y < src.h; y++) {
+		const byte *s = (const byte *)src.getBasePtr(0, y);
+		byte *d = (byte *)dst.getBasePtr(0, y);
+		for (int x = 0; x < src.w; x++, s += f.bytesPerPixel) {
+			uint32 p = f.bytesPerPixel == 4 ? READ_UINT32(s) : f.bytesPerPixel == 2 ? READ_UINT16(s) : 0;
+			uint8 r, g, b;
+			f.colorToRGB(p, r, g, b);
+			uint16 key = ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+			int16 &e = _lut[key];
+			if (e < 0) {
+				int best = 10, bestDist = 0x7fffffff;
+				for (int k = 10; k < 246; k++) {
+					int dr = pal[k * 3] - r, dg = pal[k * 3 + 1] - g, db = pal[k * 3 + 2] - b;
+					int dist = dr * dr * 3 + dg * dg * 4 + db * db * 2;
+					if (dist < bestDist) {
+						bestDist = dist;
+						best = k;
+					}
+				}
+				e = best;
+			}
+			d[x] = e;
+		}
+	}
 }
 
-VideoSprite::~VideoSprite() {
+VideoSprite::VideoSprite(uint16 id, int32 transparent, const Common::String &file, uint32 flags, int32 param) :
+	Anim(id, transparent, flags, param), _file(file) {
+	_type = kTypeVideo;
+}
+
+void VideoSprite::load() {
+	// Rooms load many videos; they are only opened while they play.
+	_loaded = true;
 }
 
 void VideoSprite::play(int32 p1, int32 p2, int32 p3) {
-	// [unverified] Not implemented yet: report completion right away.
-	warning("VideoSprite %d (%s): playback not implemented", _id, _file.c_str());
-	_loaded = true;
-	_visible = true;
-	_notify = p1;
-	_notifyParam = p3;
-	if (p1 & 0x80000000)
-		g_engine->groupAdd(p1);
-	_playing = true;
+	if (!_decoder && _frames.empty())
+		loadFrames();
+	Anim::play(p1, p2, p3);
 }
 
 void VideoSprite::stop() {
-	_playing = false;
-	Sprite::stop();
+	Anim::stop();
+	releaseFrames();
 }
 
-void VideoSprite::update(uint32 now) {
-	if (_playing) {
-		_playing = false;
-		int32 notify = _notify;
-		_notify = 0;
-		notifyDone(notify, kMsgAnimDone, _notifyParam);
+Video::VideoDecoder *VideoSprite::openDecoder() {
+	// FUN_0047b100: a Cinepak AVI, dithered to the screen palette like the
+	// original's 8-bit ICDecompress output.
+	Common::String path = g_engine->_machine->gamePath(_file);
+	Common::File *f = new Common::File();
+	if (path.empty() || !f->open(Common::Path(path, '/'))) {
+		warning("VideoSprite %d: can't open %s", _id, _file.c_str());
+		delete f;
+		return nullptr;
 	}
+	Video::AVIDecoder *dec = new Video::AVIDecoder();
+	if (!dec->loadStream(f)) {
+		warning("VideoSprite %d: can't decode %s", _id, _file.c_str());
+		delete dec;
+		return nullptr;
+	}
+	// The original dithers to the palette set when the video starts; here
+	// frames are mapped to the palette of the moment (convertFrame), since
+	// rooms set their palette after loading the videos.
+	uint32 frames = dec->getFrameCount();
+	_period = frames ? dec->getDuration().msecs() / frames : 66;
+	if (_period == 0)
+		_period = 66;
+	return dec;
 }
 
 } // End of namespace Ivanoff

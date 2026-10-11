@@ -89,7 +89,15 @@ public:
 	uint32 allocMessage(const Message &msg);
 
 	EmuObject *objectAt(uint32 addr) const;
+	/** The engine's input object, owner of the sprite cursors. */
+	EmuObject *kernel() const { return _kernel; }
 	Child *childAt(uint32 addr) const;
+
+	/** A path in the game folder for a Windows path (C:\\MM2\\...), or "". */
+	Common::String gamePath(const Common::String &winPath) {
+		Common::String g, save;
+		return mapPath(winPath, g, save) ? g : Common::String();
+	}
 
 	/** The id of the object at addr (its +4 field). */
 	uint16 objectId(uint32 addr) { return _mem.r16(addr + 4); }

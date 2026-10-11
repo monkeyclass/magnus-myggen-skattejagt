@@ -31,7 +31,7 @@
 #include "ivanoff/world.h"
 
 namespace Video {
-class FlicDecoder;
+class VideoDecoder;
 }
 
 namespace Ivanoff {
@@ -246,7 +246,16 @@ private:
 	static const int32 kNoFrame = -0x8000;
 	static const uint32 kCacheLimit = 1024 * 1024;
 
-	Video::FlicDecoder *_decoder = nullptr; ///< kept for large animations only
+protected:
+	/** Opens the frames' source (an FLC from the resources). */
+	virtual Video::VideoDecoder *openDecoder();
+	/** Opens the decoder and decodes or caches the frames; sets _loaded. */
+	void loadFrames();
+	void releaseFrames();
+	/** Converts a decoded frame to the 8-bit screen format. */
+	virtual void convertFrame(const Graphics::Surface &src, Graphics::Surface &dst);
+
+	Video::VideoDecoder *_decoder = nullptr; ///< kept for large animations only
 	Graphics::Surface *_current = nullptr;  ///< current frame of a large animation
 	int _decodedFrame = -1;
 	int _frameCount = 0;
@@ -371,21 +380,23 @@ private:
 	int _width = 0, _height = 0;
 };
 
-/** FUN_0047af30: an AVI video (0xfe04), used in the labyrinths. */
-class VideoSprite : public Sprite {
+/** FUN_0047af30: an AVI video (0xfe04), used in the labyrinths; otherwise an animation. */
+class VideoSprite : public Anim {
 public:
 	VideoSprite(uint16 id, int32 transparent, const Common::String &file, uint32 flags, int32 param);
-	~VideoSprite() override;
 
+	void load() override;
 	void play(int32 p1, int32 p2, int32 p3) override;
 	void stop() override;
-	void update(uint32 now) override;
+
+protected:
+	Video::VideoDecoder *openDecoder() override;
+	void convertFrame(const Graphics::Surface &src, Graphics::Surface &dst) override;
 
 private:
 	Common::String _file;
-	int32 _notify = 0;
-	int32 _notifyParam = 0;
-	bool _playing = false;
+	Common::Array<int16> _lut;
+	uint32 _lutRevision = 0;
 };
 
 } // End of namespace Ivanoff
