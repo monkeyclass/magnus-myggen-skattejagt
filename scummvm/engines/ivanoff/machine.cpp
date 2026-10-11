@@ -241,6 +241,9 @@ static const struct {
 	{ "KERNEL32.DLL!GetPrivateProfileStringA", 6 },
 	{ "KERNEL32.DLL!GetPrivateProfileIntA", 4 },
 	{ "KERNEL32.DLL!WritePrivateProfileStringA", 4 },
+	{ "KERNEL32.DLL!GetLocalTime", 1 },
+	{ "KERNEL32.DLL!GetSystemTime", 1 },
+	{ "KERNEL32.DLL!GetTimeZoneInformation", 1 },
 	{ "USER32.DLL!wsprintfA", 0 },
 	{ "USER32.DLL!CharUpperA", 1 }
 };
@@ -576,6 +579,22 @@ void Machine::importCall(CPU &cpu, const Common::String &name) {
 	} else if (name == "KERNEL32.DLL!CreateDirectoryA") {
 		debug(1, "Machine: CreateDirectoryA(%s)", _mem.readString(cpu.arg(0)).c_str());
 		result = 1;
+	} else if (name == "KERNEL32.DLL!GetLocalTime" || name == "KERNEL32.DLL!GetSystemTime") {
+		TimeDate t;
+		g_system->getTimeAndDate(t);
+		uint32 st = cpu.arg(0);
+		_mem.w16(st, t.tm_year + 1900);
+		_mem.w16(st + 2, t.tm_mon + 1);
+		_mem.w16(st + 4, t.tm_wday);
+		_mem.w16(st + 6, t.tm_mday);
+		_mem.w16(st + 8, t.tm_hour);
+		_mem.w16(st + 10, t.tm_min);
+		_mem.w16(st + 12, t.tm_sec);
+		_mem.w16(st + 14, 0);
+	} else if (name == "KERNEL32.DLL!GetTimeZoneInformation") {
+		// Local time is what ScummVM reports, so no offset (TIME_ZONE_ID_UNKNOWN).
+		_mem.fill(cpu.arg(0), 0, 172);
+		result = 0;
 	} else if (name == "KERNEL32.DLL!GetCurrentThreadId") {
 		result = 1;
 	} else if (name == "WINMM.DLL!timeGetTime" || name == "KERNEL32.DLL!GetTickCount") {

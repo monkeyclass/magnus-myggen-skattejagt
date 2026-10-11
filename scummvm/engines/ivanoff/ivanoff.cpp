@@ -22,6 +22,7 @@
 #include "common/config-manager.h"
 #include "common/debug.h"
 #include "common/events.h"
+#include "common/tokenizer.h"
 #include "common/file.h"
 #include "common/formats/winexe.h"
 #include "common/system.h"
@@ -144,6 +145,7 @@ Common::Error IvanoffEngine::run() {
 		}
 
 		uint32 now = _system->getMillis();
+		runDebugEvents(now);
 		_world->update();
 		updateChildren(now);
 		updateCursor();
@@ -152,6 +154,43 @@ Common::Error IvanoffEngine::run() {
 	}
 
 	return Common::kNoError;
+}
+
+// Debugging aid: "debug_events=ms:click:x,y ms:key:c ..." replays input at
+// the given times (milliseconds since start).
+void IvanoffEngine::runDebugEvents(uint32 now) {
+	if (!ConfMan.hasKey("debug_events"))
+		return;
+	if (_debugStart == 0)
+		_debugStart = now;
+	Common::String all = ConfMan.get("debug_events");
+	Common::StringTokenizer tok(all, " ");
+	int index = 0;
+	while (!tok.empty()) {
+		Common::String ev = tok.nextToken();
+		if (index++ < _debugEventIndex)
+			continue;
+		uint ms = 0, x = 0, y = 0;
+		char kind[16] = { 0 };
+		if (sscanf(ev.c_str(), "%u:%15[a-z]:%u,%u", &ms, kind, &x, &y) < 2)
+			continue;
+		if (now - _debugStart < ms)
+			return;
+		_debugEventIndex++;
+		debug(1, "Debug event %s", ev.c_str());
+		if (!strcmp(kind, "click")) {
+			_system->warpMouse(x, y);
+			onMouseMove(x, y);
+			onButton(x, y, true, false);
+			onButton(x, y, false, false);
+		} else if (!strcmp(kind, "move")) {
+			_system->warpMouse(x, y);
+			onMouseMove(x, y);
+		} else if (!strcmp(kind, "esc")) {
+			onKey(Common::KEYCODE_ESCAPE, 27, true);
+			onKey(Common::KEYCODE_ESCAPE, 27, false);
+		}
+	}
 }
 
 // --- palette ---

@@ -88,7 +88,7 @@
   The game logic is compiled C++ (MFC 4.2), not scripted, so scene logic must be reverse-engineered from the exe.
   RE reference: the 2002 build (no DRM code).
 - Data formats decoded so far (tools/mm2pack.py):
-  - `.idx`: u32 count + 12-byte entries; `mm2.idx` = {id, offset, size}, language idx = {offset, size, id}.
+  - `.idx`: 12-byte {id, offset, size} records. `mm2.idx` starts with a u32 count (1439), which is also where the language packs' ids start; `mm2lng.idx` has no count. (Corrected: an earlier note read the language index 4 bytes off, as {offset, size, id}.)
   - `mm2.dat` (1438 entries): 639 Windows BMP (8-bit), 82 WAV, 326 `.HSP` hotspot tables, about 390 **Autodesk FLC** animations
     (magic 0xAF12; scenes 560×420/640×420, 8-bit; chunks SETPAL/BRUN/COPY/SS2, all supported by `video/flic_decoder.cpp`).
   - `.HSP`: ".HSP", u32 count, then per hotspot {u32 id, u32 type (1 = rect via 2 points, 2 = polygon), u32 npts, npts×(u32 x, u32 y)} **[layout inferred]**.

@@ -127,6 +127,10 @@ private:
 
 	Common::HashMap<int32, int> _groups;
 
+	void runDebugEvents(uint32 now);
+	uint32 _debugStart = 0;
+	int _debugEventIndex = 0;
+
 	uint32 _lastDump = 0;
 	int _dumpCount = 0;
 };

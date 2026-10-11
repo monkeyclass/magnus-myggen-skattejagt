@@ -26,36 +26,20 @@
 
 namespace Ivanoff {
 
-bool ResourcePack::open(const Common::Path &idxPath, const Common::Path &datPath) {
+bool ResourcePack::open(const Common::Path &idxPath, const Common::Path &datPath, bool hasHeader) {
 	Common::File idx;
 	if (!idx.open(idxPath) || !_dat.open(datPath))
 		return false;
 
-	// The first word is a count that doesn't match the number of entries in
-	// every pack, so the entries are read until the end of the file instead.
-	_headerCount = idx.readUint32LE();
-	uint32 count = (idx.size() - 4) / 12;
+	// The shared pack's count is also where the language pack's ids start.
+	if (hasHeader)
+		_headerCount = idx.readUint32LE();
 
-	uint32 a[3];
-	for (uint32 i = 0; i < count; i++) {
-		for (int j = 0; j < 3; j++)
-			a[j] = idx.readUint32LE();
-
+	while (idx.pos() + 12 <= idx.size()) {
+		uint32 id = idx.readUint32LE();
 		Entry e;
-		uint16 id;
-		if (i == 0) {
-			// Language packs start with {offset 0, size, id}.
-			_languageLayout = (a[0] == 0 && a[1] != 0 && a[2] > 0x100);
-		}
-		if (_languageLayout) {
-			e.offset = a[0];
-			e.size = a[1];
-			id = a[2];
-		} else {
-			id = a[0];
-			e.offset = a[1];
-			e.size = a[2];
-		}
+		e.offset = idx.readUint32LE();
+		e.size = idx.readUint32LE();
 		_entries[id] = e;
 	}
 
@@ -77,11 +61,11 @@ Common::SeekableReadStream *ResourcePack::getResource(uint16 id) {
 }
 
 bool Resources::open(const Common::String &language) {
-	if (!_shared.open("mm2.idx", "mm2.dat"))
+	if (!_shared.open("mm2.idx", "mm2.dat", true))
 		return false;
 
 	Common::Path dir(language);
-	return _language.open(dir.join("mm2lng.idx"), dir.join("mm2lng.dat"));
+	return _language.open(dir.join("mm2lng.idx"), dir.join("mm2lng.dat"), false);
 }
 
 Common::SeekableReadStream *Resources::get(uint16 id) {

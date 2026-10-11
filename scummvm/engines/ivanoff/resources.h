@@ -31,13 +31,13 @@
 namespace Ivanoff {
 
 /**
- * A resource pack: an .idx file listing (id, offset, size) entries into a
- * .dat file. The shared pack (mm2.idx) stores {id, offset, size}; the
- * language packs (mm2lng.idx) store {offset, size, id}.
+ * A resource pack: an .idx file listing {id, offset, size} entries into a
+ * .dat file. The shared pack's index (mm2.idx) starts with a count, the
+ * language packs' (mm2lng.idx) don't (FUN_00480a60).
  */
 class ResourcePack {
 public:
-	bool open(const Common::Path &idxPath, const Common::Path &datPath);
+	bool open(const Common::Path &idxPath, const Common::Path &datPath, bool hasHeader);
 	bool hasResource(uint16 id) const { return _entries.contains(id); }
 	/** The count in the .idx header. */
 	uint32 getHeaderCount() const { return _headerCount; }
@@ -53,7 +53,6 @@ private:
 
 	Common::HashMap<uint16, Entry> _entries;
 	Common::File _dat;
-	bool _languageLayout = false;
 	uint32 _headerCount = 0;
 };
 

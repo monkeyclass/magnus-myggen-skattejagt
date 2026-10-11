@@ -1,18 +1,19 @@
 """Read Ivanoff MM2 .idx/.dat resource packs.
-mm2.idx:    u32 count, then count * {u32 id, u32 offset, u32 size}
-mm2xx.idx:  u32 count, then {u32 offset, u32 size, u32 id} (language packs)
+mm2.idx:     u32 count, then {u32 id, u32 offset, u32 size} records
+mm2lng.idx:  {u32 id, u32 offset, u32 size} records, no count (language packs)
+The language packs' ids start at the shared pack's count (FUN_00480a60).
 usage: mm2pack.py idx dat [list | dump ID out | hexdump ID [n]]"""
 import struct, sys
 
 def load(idx_path, dat_path):
     raw = open(idx_path, 'rb').read()
-    n = (len(raw) - 4) // 12
-    a = [struct.unpack_from('<III', raw, 4 + 12 * k) for k in range(n)]
-    # Language packs store {offset,size,id}; detect by first entry offset 0.
-    lang = a[0][0] == 0 and a[0][1] != 0 and a[0][2] > 0x100
+    # Only the shared pack (mm2.idx) has the count; a language pack's first
+    # record has id >= 0x100 and offset 0.
+    header = 4 if len(raw) % 12 == 4 else 0
+    n = (len(raw) - header) // 12
     ents = {}
-    for x in a:
-        rid, off, size = (x[2], x[0], x[1]) if lang else x
+    for k in range(n):
+        rid, off, size = struct.unpack_from('<III', raw, header + 12 * k)
         ents[rid] = (off, size)
     return ents, open(dat_path, 'rb')
 
