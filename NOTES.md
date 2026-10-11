@@ -127,3 +127,21 @@
   `install-mm2.sh` copies them next to mm2run.exe and sets AppDefaults\mm2run.exe\DllOverrides winmm, iccvid = native,builtin.
 - Upstream TODO: send both master patches to wine-devel (GitLab MR at gitlab.winehq.org). Wine requires a real-name author and
   that the new test passes on Windows (testbot).
+
+## 2026-10-11 — ScummVM engine "ivanoff" (Miyoo Mini target)
+- **Approach:** the game logic (about 120 classes, 0x401000–0x476000) is not re-implemented. A small x86 interpreter
+  (`scummvm/engines/ivanoff/emu/`) runs it from the user's `mm2run.exe`, together with the MFC/C runtime code it uses.
+  About 40 engine functions (messages, children, timers, cursor, save/load) are patched with UD2 traps and implemented
+  natively; every Win32 import is a trap too. Unimplemented engine code or Win32 calls stop with their name, which is how
+  the gaps were found. The interpreter was checked against unicorn on ~20,000 real instructions (`tools/emutest/`).
+- **Cost:** the game logic runs under 100k x86 instructions per second. The screen is redrawn only when a sprite changes.
+- **Verified in ScummVM (headless runs with frame dumps):** intro (skippable with Esc), title, hall, walking between rooms,
+  dialogue with voices and subtitles (the hall subtitle matches the Wine screenshot pixel for pixel), the menu, the save
+  and load screens, saving and loading (same `.m2s` format; a Wine save loads), the labyrinth videos and navigation, drag
+  start/hover of the tool bar items, walking characters.
+- **Mistakes found on the way:** the language index has no count and stores `{id, offset, size}` like `mm2.idx`; reading it
+  4 bytes off had shifted every language resource by one (`tools/mm2pack.py` fixed). Sound loop counts were inverted.
+  `CREATE_NEW` must fail on an existing file, otherwise `settings.dat` gets emptied at start.
+- **Miyoo Mini:** `miyoo/build.sh` (toolchain v0.0.3 in /opt), `miyoo/prepare-game.sh`, Onion app in `miyoo/app/`.
+  The ARM build runs under `qemu-arm` with the toolchain's libraries. **[unverified on a device]**
+- **[unverified]** text box mode 2 = right-aligned; image field +0x20 (command 0x18); command 9's p3.
