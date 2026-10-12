@@ -6,6 +6,8 @@ of the SD card, then put `MM2.DAT`, `MM2.IDX`, the language folder (`DK/`, `N/`,
 `SF/`), `LAB/` and `mm2run.exe` into `App/MagnusMyggen2/game/`. `miyoo/prepare-game.sh`
 does this from the CD or an .iso. Full instructions: [`miyoo/INSTALL-ONION.md`](https://github.com/monkeyclass/magnus-myggen-skattejagt/blob/main/miyoo/INSTALL-ONION.md).
 
-Status: tested as the same ARM build under `qemu-arm` (intro, rooms, dialogue with
-subtitles, saving and loading, the labyrinths), not yet on a device. The game has not been
-played through.
+Status (v0.2.0): the game logic is native C++ now (no x86 interpreter), so it should run
+much faster than v0.1.0. It was checked against the original code with automatic runs, not
+by playing it through, and not yet on a device. New: saving and loading from ScummVM's
+menu, button mapping (A click, B right click, X menu/skip, arrows, Y space), the arrow-key
+games and the volume slider work.

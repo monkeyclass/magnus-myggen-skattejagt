@@ -38,7 +38,6 @@ extern const PlainGameDescriptor ivanoffGames[];
 
 extern const ADGameDescription gameDescriptions[];
 
-#define GAMEOPTION_ORIGINAL_SAVELOAD GUIO_GAMEOPTIONS1
 
 } // End of namespace Ivanoff
 
