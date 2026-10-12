@@ -32,11 +32,6 @@ namespace Ivanoff {
 /**
  * Helpers of this batch's classes: engine functions that script.h does not
  * wrap, and the web link shared by objects 33, 47 and 48.
- *
- * Like the interpreter, which keeps a copy of the message on its heap while
- * an original handler runs, the scripts hold a 0x2c block for the duration
- * of accepts() and handle(): messages allocated by the handler itself
- * (newCommand) then get the same addresses as with the original code.
  */
 class BatchCScript : public ObjectScript {
 public:
@@ -97,13 +92,12 @@ protected:
 private:
 	/**
 	 * FUN_0044e4a0 + FUN_0044e590 (ShellExecute "open", or the browser
-	 * registered for http). The engine refuses to start programs, like the
-	 * interpreter does for the original (same log line as Machine, so the
-	 * traces compare equal); the registry fallback finds nothing either.
+	 * registered for http). ScummVM doesn't start other programs [it could
+	 * open the link with OSystem::openUrl]; the registry fallback finds
+	 * nothing either.
 	 */
 	void openLink(const Common::String &url) {
-		(void)url;
-		debug(1, "Machine: SHELL32.DLL!ShellExecuteA refused");
+		debug(1, "Not opening %s", url.c_str());
 	}
 
 };

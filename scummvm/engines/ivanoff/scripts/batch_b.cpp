@@ -31,13 +31,7 @@ enum {
 	kMsgPlayAnim = 0x2f ///< see ObjectScript: play animation p1
 };
 
-/**
- * The base of this batch's classes. When the interpreter runs an original
- * slot 5 or 6, the engine passes it the message in a 0x2c-byte block of
- * the game's heap, which stays allocated while the handler runs. The
- * heap's layout shows in the traces (objects pass heap addresses), so the
- * native handlers hold such a block too.
- */
+/** The base of this batch's classes. */
 class BatchBScript : public ObjectScript {
 public:
 	BatchBScript(GameObject *obj) : ObjectScript(obj) {}

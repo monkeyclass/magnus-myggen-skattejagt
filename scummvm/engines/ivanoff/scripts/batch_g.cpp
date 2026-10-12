@@ -28,13 +28,7 @@ namespace Ivanoff {
 namespace {
 
 enum {
-	kCStringFree = 0x49fec5,   ///< FUN_0049fec5: CString destructor
-	kNewMessage = 0x476bc0,    ///< FUN_00476bc0: a message on the heap
-	kRedrawNow = 0x476a40      ///< FUN_00476a40 (the objects' vtable slot 7)
-};
-
-enum {
-	kCmdFrameTrigger = 9,      ///< p1 = frame, p2 = a heap message or 0
+	kCmdFrameTrigger = 9,      ///< p1 = frame (see Script::cmdFrameTrigger)
 	kCmdSetMouseCursor = 0x24,
 	kCmdFlags = 0x27
 };
@@ -70,7 +64,7 @@ public:
 	}
 };
 
-/** A script of this batch: Base's accepts and handleMessage() with the heap block held. */
+/** A script of this batch: Base's accepts, and handleMessage(). */
 template<class Base>
 class HeldScript : public Base {
 public:

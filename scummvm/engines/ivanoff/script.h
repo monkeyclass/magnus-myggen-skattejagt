@@ -73,9 +73,8 @@ private:
 
 /**
  * The native logic of a top-level object: what the original classes do
- * in vtable slots 5 (accepts) and 6 (handle). While the rewrite is in
- * progress, the object itself (its variables and children) is still
- * created by the original setup code in the interpreter.
+ * in vtable slots 5 (accepts) and 6 (handle). The objects, their
+ * variables and children are created by scripts/setup.cpp.
  *
  * Handlers are written against the original engine API, so they read
  * like the original game code: send(), cmd(), var(), startTimer()...

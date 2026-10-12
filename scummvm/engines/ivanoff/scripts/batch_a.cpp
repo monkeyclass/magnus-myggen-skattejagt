@@ -105,15 +105,7 @@ private:
 const char *const GameSettings::kDir = "C:\\MM2\\appdata\\";
 const char *const GameSettings::kFile = "C:\\MM2\\appdata\\settings.dat";
 
-/**
- * Helpers shared by the classes of this batch.
- *
- * When the interpreter runs an original slot 5 or 6, the engine passes it
- * the message in a 0x2c-byte block of the game's heap, which stays
- * allocated while the handler sends further messages. The heap's layout
- * shows in the traces (objects pass heap addresses), so the native
- * handlers hold such a block too.
- */
+/** Helpers shared by the classes of this batch. */
 class BatchAScript : public Script {
 public:
 	BatchAScript(GameObject *obj) : Script(obj) {}
@@ -129,11 +121,6 @@ public:
 
 protected:
 	virtual void handleMessage(Message &msg) = 0;
-
-	/** The original makes the timer's message in the heap (FUN_00476bc0), the engine frees it. */
-	void startTimer(uint16 timerId, int32 ms, uint16 target, uint16 msg, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0) {
-		Script::startTimer(timerId, ms, target, msg, p1, p2, p3);
-	}
 
 
 	GameSettings settings() { return GameSettings(); }

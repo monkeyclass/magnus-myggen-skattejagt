@@ -28,21 +28,8 @@ namespace Ivanoff {
 
 namespace {
 
-enum {
-	kCStringCtor = 0x49ff33,   ///< FUN_0049ff33: CString(const char *)
-	kCStringCopy = 0x49fc3a,   ///< FUN_0049fc3a: CString copy constructor
-	kCStringFree = 0x49fec5,   ///< FUN_0049fec5: CString destructor
-	kCStringFormat = 0x49f000, ///< FUN_0049f000: CString::Format (cdecl)
-	kCStringEmpty = 0x4c70b0,  ///< the data pointer of an empty CString
-	kNewCommand = 0x476c50     ///< FUN_00476c50: a command message on the heap
-};
 
-
-/**
- * Var slots 0x54 / 0x5c (v++ / v--): the temporary copy they return (a
- * variable object, 0x1c bytes, with a CString at +0xc) lives on the
- * stack in the original, so it is kept off the heap here too.
- */
+/** Var slots 0x54 / 0x5c: v++ / v--. */
 static void postStep(VarRef v, uint32 slot) {
 	if (slot == 0x54)
 		v.postIncrement();
@@ -50,7 +37,7 @@ static void postStep(VarRef v, uint32 slot) {
 		v.postDecrement();
 }
 
-/** A script of this batch: Base's accepts and handleMessage() with the heap block held. */
+/** A script of this batch: Base's accepts, and handleMessage(). */
 template<class Base>
 class HeldScript : public Base {
 public:

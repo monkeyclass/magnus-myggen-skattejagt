@@ -148,7 +148,7 @@ GameObject *World::get(uint16 id) const {
 
 int32 World::deliver(GameObject *from, Message &msg) {
 	if (msg.target == kSelf)
-		msg.target = from ? from->getId() : kBroadcast;
+		msg.target = from ? from->getId() : (uint16)kBroadcast;
 	msg.mode = 1;
 	if (msg.msg != kMsgMouseMove)
 		debug(3, "msg %d -> %d (%d, %d, %d)", msg.msg, msg.target, msg.p1, msg.p2, msg.p3);
@@ -178,7 +178,7 @@ int32 World::deliverCommand(GameObject *from, Message &msg) {
 	if (msg.cmd == 0)
 		return 0;
 	if (msg.target == kSelf)
-		msg.target = from ? from->getId() : kBroadcast;
+		msg.target = from ? from->getId() : (uint16)kBroadcast;
 	msg.mode = 2;
 	if (gDebugLevel >= 4) {
 		// Frame triggers and text commands: print the message and the text.

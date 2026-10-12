@@ -28,7 +28,6 @@
 namespace Ivanoff {
 
 class GameObject;
-class Machine;
 
 /**
  * Creates the game's objects, their variables and their children the way
