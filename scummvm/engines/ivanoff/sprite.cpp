@@ -1068,7 +1068,7 @@ void TextResource::stop() {
 
 TextSprite::TextSprite(uint16 id, int32 fg, int32 bg, const Common::String &font, int32 size, int32 wrap,
                        int32 mode, int32 style, uint32 source, uint32 flags) :
-	Sprite(id, kTypeText, -1, flags, 1), _fg(fg), _bg(bg), _font(font), _size(size), _wrap(wrap),
+	Sprite(id, kTypeText, -1, flags, 1), _font(font), _fg(fg), _bg(bg), _size(size), _wrap(wrap),
 	_mode(mode), _style(style), _source(source) {
 	if (_bg < 0)
 		_transparent = 0xfa;

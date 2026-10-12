@@ -113,7 +113,7 @@ Common::Error IvanoffEngine::run() {
 
 	loadCursors("mm2run.exe");
 
-	_world = new World(this);
+	_world = new World();
 	_files = new GameFiles();
 
 	// The engine's own object, owner of the global sprites (cursors).

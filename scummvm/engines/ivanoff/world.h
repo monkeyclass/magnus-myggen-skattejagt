@@ -229,7 +229,7 @@ struct Timer {
  */
 class World {
 public:
-	World(IvanoffEngine *vm) : _vm(vm) {}
+	World() {}
 	~World();
 
 	void add(GameObject *obj);
@@ -254,7 +254,6 @@ public:
 	uint16 _keyFocus = 0;
 
 private:
-	IvanoffEngine *_vm;
 	Common::HashMap<uint16, GameObject *> _objects;
 	Common::Array<GameObject *> _order;
 	Common::List<Message> _posted;
