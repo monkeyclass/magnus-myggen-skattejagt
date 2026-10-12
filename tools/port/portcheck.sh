@@ -34,8 +34,8 @@ FROOMS=$(for v in $(echo $vts | tr ',' ' '); do grep "vt=$v " /home/user/analysi
 for r in 22 24 27 34 36 38 43 44 49 52 55 18 40 46 47 15 16 59 $FROOMS; do
 	i=$((i+1))
 	( run room$r $r 1234 "$ROOMEV" native_scripts=$vts ) &
-	( run nf$r $r $((r*7)) "$FUZZEV" native_scripts=$vts fuzz_dict=/home/user/analysis/decomp/fuzz.dict fuzz_vtables=$vts fuzz_vars=$([ $((i%2)) = 0 ] && echo true || echo false) ) &
-	( run ef$r $r $((r*7)) "$FUZZEV" native_scripts=none fuzz_dict=/home/user/analysis/decomp/fuzz.dict fuzz_vtables=$vts fuzz_vars=$([ $((i%2)) = 0 ] && echo true || echo false) coverage=$out/ef$r.cov ) &
+	( run nf$r $r $((r*7+${SEEDOFF:-0})) "$FUZZEV" native_scripts=$vts fuzz_dict=/home/user/analysis/decomp/fuzz.dict fuzz_vtables=$vts fuzz_vars=$([ $((i%2)) = 0 ] && echo true || echo false) ) &
+	( run ef$r $r $((r*7+${SEEDOFF:-0})) "$FUZZEV" native_scripts=none fuzz_dict=/home/user/analysis/decomp/fuzz.dict fuzz_vtables=$vts fuzz_vars=$([ $((i%2)) = 0 ] && echo true || echo false) coverage=$out/ef$r.cov ) &
 	[ $((i%2)) = 0 ] && wait
 done
 wait

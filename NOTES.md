@@ -162,3 +162,14 @@
   arguments (MSVC interleaves the pushes of two calls). `get` never takes arguments.
 - **Setup code:** all but three (`0x426c40`, `0x42b0c0`, `0x4575f0`) of the ~230 createVars/createChildren functions are
   straight-line constructor calls, so the native setup can be generated from the state after setup. **[plan]**
+- **2026-10-12: all message handlers are native.** All 118 classes (119 objects) run native `accepts`/`handle`
+  (`scripts/base.cpp`, `items.cpp`, `batch_a..h.cpp`), ported by 8 parallel agents from the typed decompilation, each
+  checked by targeted fuzzing in its rooms. Final check with everything native: 190 runs (rooms, walks, fuzzing)
+  identical to the original, plus 126 extra fuzz runs for rooms 52/57/59.
+  Fuzzing coverage per handler varies (2-99% before extra seeds; most 40-90%); uncovered paths were reviewed
+  against the disassembly only. **[unverified by play]** Weakest: rooms 57 (32%), 30 (46%), 36 (43%), 59 (48%).
+- **Hybrid artefacts to remove in phase 2:** native handlers hold a 0x2c heap block and keep temporaries on the
+  interpreter stack so that heap addresses (which appear in commands, e.g. frame-trigger messages) match the
+  original; strings and settings (`StdString`, `GameSettings` in batch a) live in the interpreter's heap.
+- **Phase 2 (next):** native variables (same save format), native setup (createVars/createChildren generated from
+  the state after the original setup), then the interpreter can go.
