@@ -78,7 +78,7 @@ most handlers):
 | slot 5 `FUN_004209d0`, `FUN_00452b40` (→ `FUN_00423a60`) | `ItemScript::accepts` |
 | `Object4b51a4_handle` (`FUN_0041b910`), `FUN_004344f0` | `ObjectScript::handle` |
 | `FUN_00423aa0` | `ItemScript::handle` |
-| `Object4b45e4_handle` (`FUN_004532e0`) | `Object99::handle` |
+| `Object4b45e4_handle` (`FUN_004532e0`) | `Item99::handle` |
 
 ## Pitfalls
 
@@ -106,10 +106,10 @@ most handlers):
 ## Style
 
 * ScummVM's code style (tabs, braces, `Common::` types).
-* One class per original class, named after the object (`Object22`), or
-  after the vtable when the id is set at run time (`Object4b52c4`), with a
-  comment naming the vtable and the original handler, and what the object
-  is when known. Rename to meaningful names when the meaning is clear.
+* One class per original class: `RoomNN` for rooms (the object id is the
+  room number), `ItemNN` for items, a name by role for the rest
+  (`Toolbar`, `SaveScreen`, `GameState`, ...). Each has a comment naming
+  the object id, the vtable and the original handler.
 * Use the names of `world.h` for messages and commands where they fit;
   keep hex constants (child ids, text ids) otherwise. Mark guesses
   **[unverified]**.
