@@ -2,6 +2,7 @@ MODULE := engines/ivanoff
 
 MODULE_OBJS = \
 	console.o \
+	debugtools.o \
 	files.o \
 	ivanoff.o \
 	metaengine.o \
