@@ -79,7 +79,9 @@ enum {
 	kMsgDrop = 0x139a,
 	kMsgClickNoDrag = 0x139b,
 	kMsgWhoIsDragged = 0x139c,
-	kMsgIdle = 0x139e
+	kMsgIdle = 0x139e,
+	/** Not in the original: load the game from IvanoffEngine::_pendingLoad (ScummVM's load). */
+	kMsgEngineLoad = 0x7f01
 };
 
 /** Child commands (Message::cmd). */

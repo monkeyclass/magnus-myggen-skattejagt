@@ -132,6 +132,10 @@ Common::Error IvanoffEngine::run() {
 	Message init(kGameState, 0, kMsgInit);
 	_world->deliver(nullptr, init);
 
+	// A save chosen in the launcher.
+	if (ConfMan.hasKey("save_slot"))
+		loadGameState(ConfMan.getInt("save_slot"));
+
 	CursorMan.showMouse(true);
 	applyCursor(0x80000003);
 
@@ -177,6 +181,52 @@ Common::Error IvanoffEngine::run() {
 	}
 
 	return Common::kNoError;
+}
+
+// --- ScummVM's save and load ---
+//
+// A ScummVM save holds the original's save records (the .m2s format); the
+// game's own save screen keeps using its SavedGameN.m2s files.
+
+bool IvanoffEngine::canSaveGameStateCurrently(Common::U32String *msg) {
+	// As the original's F5/F6 keys: in a room, without the save screen
+	// (object 14, var 0x1e) or a blocking state of the toolbar (object 8, var 0xd).
+	GameObject *state = _world ? _world->get(kGameState) : nullptr;
+	GameObject *screen = _world ? _world->get(14) : nullptr;
+	GameObject *toolbar = _world ? _world->get(8) : nullptr;
+	if (!state || !screen || !toolbar)
+		return false;
+	return state->var(1)->getInt() != 0 && screen->var(0x1e)->getInt() == 0 && toolbar->var(0xd)->getInt() == 0;
+}
+
+bool IvanoffEngine::canLoadGameStateCurrently(Common::U32String *msg) {
+	GameObject *screen = _world ? _world->get(14) : nullptr;
+	GameObject *toolbar = _world ? _world->get(8) : nullptr;
+	if (!screen || !toolbar)
+		return false;
+	return screen->var(0x1e)->getInt() == 0 && toolbar->var(0xd)->getInt() == 0;
+}
+
+Common::Error IvanoffEngine::saveGameStream(Common::WriteStream *stream, bool isAutosave) {
+	Common::Array<byte> data;
+	_files->saveWorld(data, GameFiles::kSaveVersion);
+	stream->writeUint32LE(data.size());
+	if (!data.empty())
+		stream->write(data.data(), data.size());
+	return stream->err() ? Common::kWritingFailed : Common::kNoError;
+}
+
+Common::Error IvanoffEngine::loadGameStream(Common::SeekableReadStream *stream) {
+	uint32 size = stream->readUint32LE();
+	if (stream->err() || size > (uint32)stream->size())
+		return Common::kReadingFailed;
+	_pendingLoad.resize(size);
+	if (size)
+		stream->read(_pendingLoad.data(), size);
+	Message m(14, 0, kMsgEngineLoad);
+	_world->deliver(nullptr, m);
+	_pendingLoad.clear();
+	return m.result ? Common::kNoError : Common::kReadingFailed;
 }
 
 void IvanoffEngine::setGlobal(uint32 addr, int32 value) {
@@ -382,6 +432,11 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 		} else if (!strcmp(kind, "save")) {
 			// Saves to SavedGame<x>.m2s with version y.
 			_files->saveWorld(Common::String::format("C:\\MM2\\appdata\\SavedGame%u.m2s", x), y);
+		} else if (!strcmp(kind, "gsave")) {
+			// ScummVM's save to slot x.
+			debug(1, "gsave %d: %s", x, canSaveGameStateCurrently() ? saveGameState(x, "test").getDesc().c_str() : "not now");
+		} else if (!strcmp(kind, "gload")) {
+			debug(1, "gload %d: %s", x, canLoadGameStateCurrently() ? loadGameState(x).getDesc().c_str() : "not now");
 		} else if (!strcmp(kind, "quit")) {
 			quitGame();
 		}

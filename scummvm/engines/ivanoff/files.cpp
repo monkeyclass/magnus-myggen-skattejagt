@@ -239,24 +239,21 @@ void GameFiles::iniSet(const Common::String &file, const Common::String &section
 // A save file is a list of records (key, size, data): the version (key 0),
 // then each object's variables in the world's order (FUN_0048d080 file class).
 
-bool GameFiles::saveWorld(const Common::String &file, uint32 version) {
+void GameFiles::saveWorld(Common::Array<byte> &data, uint32 version) {
 	const Common::Array<GameObject *> &objs = g_engine->_world->getObjects();
 	SaveRecords f;
 	int32 v = version;
 	f.writeInts(0, &v, 1);
 	for (uint i = 0; i < objs.size(); i++)
 		objs[i]->_vars.save(f);
-	return writeFile(file, f._bytes);
+	data = f._bytes;
 }
 
-bool GameFiles::loadWorld(const Common::String &file, uint32 version) {
+bool GameFiles::loadWorld(const Common::Array<byte> &data, uint32 version) {
 	const Common::Array<GameObject *> &objs = g_engine->_world->getObjects();
 	SaveRecords f;
+	f._bytes = data;
 	Common::Array<int32> v;
-	if (!readFile(file, f._bytes)) {
-		debug(1, "Files: can't load %s", file.c_str());
-		return false;
-	}
 	if (!f.readInts(0, v) || v.empty() || (uint32)v[0] != version) {
 		warning("Files: save file version %d, expected %d", v.empty() ? -1 : v[0], version);
 		return false;
@@ -264,6 +261,21 @@ bool GameFiles::loadWorld(const Common::String &file, uint32 version) {
 	for (uint i = 0; i < objs.size(); i++)
 		objs[i]->_vars.load(f);
 	return true;
+}
+
+bool GameFiles::saveWorld(const Common::String &file, uint32 version) {
+	Common::Array<byte> data;
+	saveWorld(data, version);
+	return writeFile(file, data);
+}
+
+bool GameFiles::loadWorld(const Common::String &file, uint32 version) {
+	Common::Array<byte> data;
+	if (!readFile(file, data)) {
+		debug(1, "Files: can't load %s", file.c_str());
+		return false;
+	}
+	return loadWorld(data, version);
 }
 
 } // End of namespace Ivanoff

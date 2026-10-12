@@ -68,8 +68,16 @@ public:
 	bool hasVirtualClock() const { return _virtualStep != 0; }
 
 	bool hasFeature(EngineFeature f) const override {
-		return f == kSupportsReturnToLauncher;
+		return f == kSupportsReturnToLauncher || f == kSupportsLoadingDuringRuntime ||
+		       f == kSupportsSavingDuringRuntime;
 	}
+	bool canLoadGameStateCurrently(Common::U32String *msg = nullptr) override;
+	bool canSaveGameStateCurrently(Common::U32String *msg = nullptr) override;
+	Common::Error loadGameStream(Common::SeekableReadStream *stream) override;
+	Common::Error saveGameStream(Common::WriteStream *stream, bool isAutosave = false) override;
+
+	/** The save data for kMsgEngineLoad. */
+	Common::Array<byte> _pendingLoad;
 
 	Resources _resources;
 	World *_world = nullptr;

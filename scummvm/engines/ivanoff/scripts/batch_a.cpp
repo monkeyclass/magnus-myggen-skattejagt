@@ -502,6 +502,9 @@ public:
 			if (msg.p1 >= 1 && msg.p1 <= 0x10)
 				load(msg.p1);
 			break;
+		case kMsgEngineLoad:
+			msg.result = loadPending();
+			break;
 		case 0x2c:
 			if (msg.p1 >= 1 && msg.p1 <= 0x10 && msg.p2 >= 1 && msg.p2 <= 0x23)
 				save(msg.p1, msg.p2);
@@ -672,6 +675,26 @@ private:
 		setCursor(kCursorWait);
 		if (!loadGame(file))
 			return;
+		afterLoad(oldRoom);
+	}
+
+	/** Loads the game ScummVM's load gives (not in the original), as loadFile() does. */
+	bool loadPending() {
+		// Nothing to post when the screen closes: it wasn't opened.
+		setGlobal32(kGlobNextTarget, 0);
+		int32 oldRoom = var(1, kGameState).get();
+		setCursor(kCursorWait);
+		if (!g_engine->_files->loadWorld(g_engine->_pendingLoad, GameFiles::kSaveVersion)) {
+			setCursor(0);
+			return false;
+		}
+		afterLoad(oldRoom);
+		setCursor(0);
+		return true;
+	}
+
+	/** The end of loadFile(): leave the old room, enter the loaded one. */
+	void afterLoad(int32 oldRoom) {
 		int32 room = var(1, kGameState).get();
 		if (cmd(0xb, kCmdIsPlaying, 0x559) == 0 && room != 0x3e && room != 0x28 &&
 		    room != 0x2a && room != 0x38)

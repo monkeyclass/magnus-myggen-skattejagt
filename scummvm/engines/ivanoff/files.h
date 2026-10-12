@@ -62,6 +62,10 @@ public:
 	/** Saves / loads the variables of all objects (the original's .m2s format, FUN_0047bea0 / FUN_0047bfa0). */
 	bool saveWorld(const Common::String &file, uint32 version);
 	bool loadWorld(const Common::String &file, uint32 version);
+	void saveWorld(Common::Array<byte> &data, uint32 version);
+	bool loadWorld(const Common::Array<byte> &data, uint32 version);
+
+	enum { kSaveVersion = 0x10100 };
 
 private:
 	bool mapPath(const Common::String &winPath, Common::String &gamePath, Common::String &saveName) const;
