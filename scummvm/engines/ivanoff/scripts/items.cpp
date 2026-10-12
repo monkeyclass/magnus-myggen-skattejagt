@@ -26,9 +26,9 @@
 namespace Ivanoff {
 
 /** Object 72 (vtable 0x4b4944, FUN_0040dd80). */
-class Object72 : public ItemScript {
+class Item72 : public ItemScript {
 public:
-	Object72(GameObject *obj) : ItemScript(obj) {}
+	Item72(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		if (msg.msg == 0x3b)
 			msg.result = 1;
@@ -40,9 +40,9 @@ public:
 };
 
 /** Object 67 (vtable 0x4b49e4, FUN_00405c60). */
-class Object67 : public ItemScript {
+class Item67 : public ItemScript {
 public:
-	Object67(GameObject *obj) : ItemScript(obj) {}
+	Item67(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		switch (msg.msg) {
 		case kMsgLeave:
@@ -72,9 +72,9 @@ public:
 };
 
 /** Object 76 (vtable 0x4b48c4, FUN_00413a10). */
-class Object76 : public ItemScript {
+class Item76 : public ItemScript {
 public:
-	Object76(GameObject *obj) : ItemScript(obj) {}
+	Item76(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		switch (msg.msg) {
 		case kMsgLeave:
@@ -125,7 +125,7 @@ public:
 	}
 };
 
-void Object99::handle(Message &msg) {
+void Item99::handle(Message &msg) {
 	// FUN_004532e0
 	switch (msg.msg) {
 	case 0x3b:
@@ -170,9 +170,9 @@ void Object99::handle(Message &msg) {
 }
 
 /** Object 100 (vtable 0x4b45c4, FUN_00452b50), a kind of object 99. */
-class Object100 : public Object99 {
+class Item100 : public Item99 {
 public:
-	Object100(GameObject *obj) : Object99(obj) {}
+	Item100(GameObject *obj) : Item99(obj) {}
 	void handle(Message &msg) override {
 		if (msg.msg == kMsgLeave && msg.p1 == 0x24) {
 			cmd(kSelf, kCmdUnload, 0x34b);
@@ -183,14 +183,14 @@ public:
 				cmd(kSelf, kCmdPlay, 0x34b);
 		}
 		if (msg.handled == 0)
-			Object99::handle(msg);
+			Item99::handle(msg);
 	}
 };
 
-IVANOFF_SCRIPT(Object67) { return new Object67(obj); }
-IVANOFF_SCRIPT(Object72) { return new Object72(obj); }
-IVANOFF_SCRIPT(Object76) { return new Object76(obj); }
-IVANOFF_SCRIPT(Object99) { return new Object99(obj); }
-IVANOFF_SCRIPT(Object100) { return new Object100(obj); }
+IVANOFF_SCRIPT(Item67) { return new Item67(obj); }
+IVANOFF_SCRIPT(Item72) { return new Item72(obj); }
+IVANOFF_SCRIPT(Item76) { return new Item76(obj); }
+IVANOFF_SCRIPT(Item99) { return new Item99(obj); }
+IVANOFF_SCRIPT(Item100) { return new Item100(obj); }
 
 } // End of namespace Ivanoff

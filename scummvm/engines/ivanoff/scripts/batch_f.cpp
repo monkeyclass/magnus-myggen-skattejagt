@@ -81,14 +81,14 @@ protected:
 		return t == 11;
 	}
 
-	/** The time read at the start of the message (Object25, Object43). */
+	/** The time read at the start of the message (Room25, Room43). */
 	uint32 _now = 0;
 };
 
 /** Object 23 (vtable 0x4b4f44, FUN_00403e20), room 0x17. */
-class Object23 : public RoomScript {
+class Room23 : public RoomScript {
 public:
-	Object23(GameObject *obj) : RoomScript(obj) {}
+	Room23(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x17)
 			handleRoom(msg);
@@ -180,9 +180,9 @@ private:
 };
 
 /** Object 24 (vtable 0x4b4f24, FUN_004050b0), room 0x18. */
-class Object24 : public RoomScript {
+class Room24 : public RoomScript {
 public:
-	Object24(GameObject *obj) : RoomScript(obj) {}
+	Room24(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x18) {
 			switch (msg.msg) {
@@ -226,9 +226,9 @@ public:
 };
 
 /** Object 25 (vtable 0x4b4f04, FUN_00407440), room 0x19. */
-class Object25 : public RoomScript {
+class Room25 : public RoomScript {
 public:
-	Object25(GameObject *obj) : RoomScript(obj) {}
+	Room25(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		_now = currentTime();
 		if (currentRoom() == 0x19)
@@ -353,9 +353,9 @@ private:
 };
 
 /** Object 27 (vtable 0x4b4ec4, FUN_0040abc0), room 0x1b (and its part of room 0x25). */
-class Object27 : public RoomScript {
+class Room27 : public RoomScript {
 public:
-	Object27(GameObject *obj) : RoomScript(obj) {}
+	Room27(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		int32 room = currentRoom();
 		if (room == 0x1b)
@@ -525,9 +525,9 @@ private:
 };
 
 /** Object 28 (vtable 0x4b4ea4, FUN_0040bcb0), room 0x1c. */
-class Object28 : public RoomScript {
+class Room28 : public RoomScript {
 public:
-	Object28(GameObject *obj) : RoomScript(obj) {}
+	Room28(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x1c)
 			handleRoom(msg);
@@ -707,9 +707,9 @@ private:
 };
 
 /** Object 29 (vtable 0x4b4e84, FUN_004104a0), room 0x1d. */
-class Object29 : public RoomScript {
+class Room29 : public RoomScript {
 public:
-	Object29(GameObject *obj) : RoomScript(obj) {}
+	Room29(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x1d)
 			handleRoom(msg);
@@ -928,9 +928,9 @@ private:
 };
 
 /** Object 31 (vtable 0x4b4e44, FUN_00412c80), room 0x1f. */
-class Object31 : public RoomScript {
+class Room31 : public RoomScript {
 public:
-	Object31(GameObject *obj) : RoomScript(obj) {}
+	Room31(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x1f)
 			handleRoom(msg);
@@ -1063,9 +1063,9 @@ private:
 };
 
 /** Object 32 (vtable 0x4b4e24, FUN_004134e0), room 0x20. */
-class Object32 : public RoomScript {
+class Room32 : public RoomScript {
 public:
-	Object32(GameObject *obj) : RoomScript(obj) {}
+	Room32(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x20) {
 			switch (msg.msg) {
@@ -1115,9 +1115,9 @@ public:
 };
 
 /** Object 34 (vtable 0x4b4de4, FUN_0041d240), room 0x22. */
-class Object34 : public RoomScript {
+class Room34 : public RoomScript {
 public:
-	Object34(GameObject *obj) : RoomScript(obj) {}
+	Room34(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x22)
 			handleRoom(msg);
@@ -1324,9 +1324,9 @@ private:
 };
 
 /** Object 35 (vtable 0x4b4dc4, FUN_0041e160), room 0x23. */
-class Object35 : public RoomScript {
+class Room35 : public RoomScript {
 public:
-	Object35(GameObject *obj) : RoomScript(obj) {}
+	Room35(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x23)
 			handleRoom(msg);
@@ -1440,9 +1440,9 @@ private:
 };
 
 /** Object 37 (vtable 0x4b4d84, FUN_004209e0), room 0x25. */
-class Object37 : public RoomScript {
+class Room37 : public RoomScript {
 public:
-	Object37(GameObject *obj) : RoomScript(obj) {}
+	Room37(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x25)
 			handleRoom(msg);
@@ -1616,9 +1616,9 @@ private:
 };
 
 /** Object 38 (vtable 0x4b4d64, FUN_00425400), room 0x26. */
-class Object38 : public RoomScript {
+class Room38 : public RoomScript {
 public:
-	Object38(GameObject *obj) : RoomScript(obj) {}
+	Room38(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x26)
 			handleRoom(msg);
@@ -1820,9 +1820,9 @@ private:
 };
 
 /** Object 39 (vtable 0x4b4d44, FUN_004264c0), room 0x27. */
-class Object39 : public RoomScript {
+class Room39 : public RoomScript {
 public:
-	Object39(GameObject *obj) : RoomScript(obj) {}
+	Room39(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x27)
 			handleRoom(msg);
@@ -1923,9 +1923,9 @@ private:
 };
 
 /** Object 41 (vtable 0x4b4d04, FUN_0042af10), room 0x29. */
-class Object41 : public RoomScript {
+class Room41 : public RoomScript {
 public:
-	Object41(GameObject *obj) : RoomScript(obj) {}
+	Room41(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x29) {
 			if (msg.msg == kMsgExit)
@@ -1939,9 +1939,9 @@ public:
 };
 
 /** Object 43 (vtable 0x4b4cc4, FUN_0042f440), room 0x2b. */
-class Object43 : public RoomScript {
+class Room43 : public RoomScript {
 public:
-	Object43(GameObject *obj) : RoomScript(obj) {}
+	Room43(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		_now = currentTime();
 		if (currentRoom() == 0x2b)
@@ -2166,9 +2166,9 @@ private:
 };
 
 /** Object 44 (vtable 0x4b4ca4, FUN_004302e0), room 0x2c. */
-class Object44 : public RoomScript {
+class Room44 : public RoomScript {
 public:
-	Object44(GameObject *obj) : RoomScript(obj) {}
+	Room44(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x2c)
 			handleRoom(msg);
@@ -2285,9 +2285,9 @@ private:
 };
 
 /** Object 45 (vtable 0x4b4c84, FUN_0043e670), room 0x2d. */
-class Object45 : public RoomScript {
+class Room45 : public RoomScript {
 public:
-	Object45(GameObject *obj) : RoomScript(obj) {}
+	Room45(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x2d)
 			handleRoom(msg);
@@ -2428,22 +2428,22 @@ private:
 	}
 };
 
-IVANOFF_SCRIPT(Object23) { return new Object23(obj); }
-IVANOFF_SCRIPT(Object24) { return new Object24(obj); }
-IVANOFF_SCRIPT(Object25) { return new Object25(obj); }
-IVANOFF_SCRIPT(Object27) { return new Object27(obj); }
-IVANOFF_SCRIPT(Object28) { return new Object28(obj); }
-IVANOFF_SCRIPT(Object29) { return new Object29(obj); }
-IVANOFF_SCRIPT(Object31) { return new Object31(obj); }
-IVANOFF_SCRIPT(Object32) { return new Object32(obj); }
-IVANOFF_SCRIPT(Object34) { return new Object34(obj); }
-IVANOFF_SCRIPT(Object35) { return new Object35(obj); }
-IVANOFF_SCRIPT(Object37) { return new Object37(obj); }
-IVANOFF_SCRIPT(Object38) { return new Object38(obj); }
-IVANOFF_SCRIPT(Object39) { return new Object39(obj); }
-IVANOFF_SCRIPT(Object41) { return new Object41(obj); }
-IVANOFF_SCRIPT(Object43) { return new Object43(obj); }
-IVANOFF_SCRIPT(Object44) { return new Object44(obj); }
-IVANOFF_SCRIPT(Object45) { return new Object45(obj); }
+IVANOFF_SCRIPT(Room23) { return new Room23(obj); }
+IVANOFF_SCRIPT(Room24) { return new Room24(obj); }
+IVANOFF_SCRIPT(Room25) { return new Room25(obj); }
+IVANOFF_SCRIPT(Room27) { return new Room27(obj); }
+IVANOFF_SCRIPT(Room28) { return new Room28(obj); }
+IVANOFF_SCRIPT(Room29) { return new Room29(obj); }
+IVANOFF_SCRIPT(Room31) { return new Room31(obj); }
+IVANOFF_SCRIPT(Room32) { return new Room32(obj); }
+IVANOFF_SCRIPT(Room34) { return new Room34(obj); }
+IVANOFF_SCRIPT(Room35) { return new Room35(obj); }
+IVANOFF_SCRIPT(Room37) { return new Room37(obj); }
+IVANOFF_SCRIPT(Room38) { return new Room38(obj); }
+IVANOFF_SCRIPT(Room39) { return new Room39(obj); }
+IVANOFF_SCRIPT(Room41) { return new Room41(obj); }
+IVANOFF_SCRIPT(Room43) { return new Room43(obj); }
+IVANOFF_SCRIPT(Room44) { return new Room44(obj); }
+IVANOFF_SCRIPT(Room45) { return new Room45(obj); }
 
 } // End of namespace Ivanoff

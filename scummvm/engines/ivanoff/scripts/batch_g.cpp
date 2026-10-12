@@ -117,9 +117,9 @@ typedef HeldScript<ItemScript> HeldItem;
 
 // --- Object 49: room 0x31 (vtable 0x4b4c04, FUN_0045b250) ---
 
-class Object49 : public RoomScript {
+class Room49 : public RoomScript {
 public:
-	Object49(GameObject *obj) : RoomScript(obj) {}
+	Room49(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -255,7 +255,7 @@ private:
 	}
 };
 
-const Object49::Door Object49::kDoors[6] = {
+const Room49::Door Room49::kDoors[6] = {
 	{ 0x53, 0x1dc, 0x1db, 0xb, 0xbf, 0x16 },
 	{ 0x58, 0x1df, 0x1de, 0x24a, 0xbe, 0x1c },
 	{ 0x57, 0x1e3, 0x1e2, 0x1d4, 0xcf, 0x23 },
@@ -266,9 +266,9 @@ const Object49::Door Object49::kDoors[6] = {
 
 // --- Object 50: room 0x32 (vtable 0x4b4be4, FUN_0045c220) ---
 
-class Object50 : public RoomScript {
+class Room50 : public RoomScript {
 public:
-	Object50(GameObject *obj) : RoomScript(obj) {}
+	Room50(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -369,9 +369,9 @@ private:
 
 // --- Object 51: room 0x33 (vtable 0x4b4bc4, FUN_0045ca80) ---
 
-class Object51 : public RoomScript {
+class Room51 : public RoomScript {
 public:
-	Object51(GameObject *obj) : RoomScript(obj) {}
+	Room51(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -536,9 +536,9 @@ private:
 
 // --- Object 52: room 0x34 (vtable 0x4b4ba4, FUN_0045f730) ---
 
-class Object52 : public RoomScript {
+class Room52 : public RoomScript {
 public:
-	Object52(GameObject *obj) : RoomScript(obj) {}
+	Room52(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -760,9 +760,9 @@ private:
 
 // --- Object 53: room 0x35 (vtable 0x4b4b84, FUN_004607d0) ---
 
-class Object53 : public RoomScript {
+class Room53 : public RoomScript {
 public:
-	Object53(GameObject *obj) : RoomScript(obj) {}
+	Room53(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -945,9 +945,9 @@ private:
 
 // --- Object 54: room 0x36 (vtable 0x4b4b64, FUN_004614a0) ---
 
-class Object54 : public RoomScript {
+class Room54 : public RoomScript {
 public:
-	Object54(GameObject *obj) : RoomScript(obj) {}
+	Room54(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1102,9 +1102,9 @@ private:
 
 // --- Object 56: room 0x38 (vtable 0x4b4b24, FUN_004711b0) ---
 
-class Object56 : public RoomScript {
+class Room56 : public RoomScript {
 public:
-	Object56(GameObject *obj) : RoomScript(obj) {}
+	Room56(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1226,9 +1226,9 @@ private:
 
 // --- Object 57: room 0x39 (vtable 0x4b4b04, FUN_00471c70) ---
 
-class Object57 : public RoomScript {
+class Room57 : public RoomScript {
 public:
-	Object57(GameObject *obj) : RoomScript(obj) {}
+	Room57(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1421,9 +1421,9 @@ private:
 
 // --- Object 58: room 0x3a (vtable 0x4b4ae4, FUN_00472770) ---
 
-class Object58 : public RoomScript {
+class Room58 : public RoomScript {
 public:
-	Object58(GameObject *obj) : RoomScript(obj) {}
+	Room58(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1484,9 +1484,9 @@ protected:
 
 // --- Object 59: room 0x3b (vtable 0x4b4ac4, FUN_004730f0), the four switches ---
 
-class Object59 : public RoomScript {
+class Room59 : public RoomScript {
 public:
-	Object59(GameObject *obj) : RoomScript(obj) {}
+	Room59(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1703,9 +1703,9 @@ private:
 
 // --- Object 62: room 0x3e (vtable 0x4b4a64, FUN_0045a4a0) ---
 
-class Object62 : public RoomScript {
+class Room62 : public RoomScript {
 public:
-	Object62(GameObject *obj) : RoomScript(obj) {}
+	Room62(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1770,9 +1770,9 @@ private:
 
 // --- Object 63 (vtable 0x4b4a44, FUN_004011a0), an item seen in rooms 0x24 and 0x35 ---
 
-class Object63 : public HeldItem {
+class Item63 : public HeldItem {
 public:
-	Object63(GameObject *obj) : HeldItem(obj) {}
+	Item63(GameObject *obj) : HeldItem(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1824,9 +1824,9 @@ protected:
 
 // --- Object 64 (vtable 0x4b4a24, FUN_00404cb0), an item in room 0x36 that takes item 0x70 ---
 
-class Object64 : public HeldItem {
+class Item64 : public HeldItem {
 public:
-	Object64(GameObject *obj) : HeldItem(obj) {}
+	Item64(GameObject *obj) : HeldItem(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1884,18 +1884,18 @@ protected:
 
 } // End of anonymous namespace
 
-IVANOFF_SCRIPT(Object49) { return new Object49(obj); }
-IVANOFF_SCRIPT(Object50) { return new Object50(obj); }
-IVANOFF_SCRIPT(Object51) { return new Object51(obj); }
-IVANOFF_SCRIPT(Object52) { return new Object52(obj); }
-IVANOFF_SCRIPT(Object53) { return new Object53(obj); }
-IVANOFF_SCRIPT(Object54) { return new Object54(obj); }
-IVANOFF_SCRIPT(Object56) { return new Object56(obj); }
-IVANOFF_SCRIPT(Object57) { return new Object57(obj); }
-IVANOFF_SCRIPT(Object58) { return new Object58(obj); }
-IVANOFF_SCRIPT(Object59) { return new Object59(obj); }
-IVANOFF_SCRIPT(Object62) { return new Object62(obj); }
-IVANOFF_SCRIPT(Object63) { return new Object63(obj); }
-IVANOFF_SCRIPT(Object64) { return new Object64(obj); }
+IVANOFF_SCRIPT(Room49) { return new Room49(obj); }
+IVANOFF_SCRIPT(Room50) { return new Room50(obj); }
+IVANOFF_SCRIPT(Room51) { return new Room51(obj); }
+IVANOFF_SCRIPT(Room52) { return new Room52(obj); }
+IVANOFF_SCRIPT(Room53) { return new Room53(obj); }
+IVANOFF_SCRIPT(Room54) { return new Room54(obj); }
+IVANOFF_SCRIPT(Room56) { return new Room56(obj); }
+IVANOFF_SCRIPT(Room57) { return new Room57(obj); }
+IVANOFF_SCRIPT(Room58) { return new Room58(obj); }
+IVANOFF_SCRIPT(Room59) { return new Room59(obj); }
+IVANOFF_SCRIPT(Room62) { return new Room62(obj); }
+IVANOFF_SCRIPT(Item63) { return new Item63(obj); }
+IVANOFF_SCRIPT(Item64) { return new Item64(obj); }
 
 } // End of namespace Ivanoff

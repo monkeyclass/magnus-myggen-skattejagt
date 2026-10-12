@@ -83,9 +83,9 @@ protected:
 // --- Object 9 ---
 
 /** Object 9 (vtable 0x4b5104, FUN_00434590): the trash can of the inventory bar (child 0x54d) [unverified]. */
-class Object9 : public HeldScript<Script> {
+class TrashCan : public HeldScript<Script> {
 public:
-	Object9(GameObject *obj) : HeldScript<Script>(obj) {}
+	TrashCan(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	/** Children over which the drag cursor stays the plain one. */
@@ -166,9 +166,9 @@ protected:
  * Globals: 0x4cab74 the palette before opening, 0x4cab78-0x4cab80 the
  * layout cursor (column, x, y), 0x4cab84 layout in progress.
  */
-class Object10 : public HeldScript<Script> {
+class Inventory : public HeldScript<Script> {
 public:
-	Object10(GameObject *obj) : HeldScript<Script>(obj) {}
+	Inventory(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	enum {
@@ -389,9 +389,9 @@ protected:
 // --- Object 11 ---
 
 /** Object 11 (vtable 0x4b50c4, FUN_00470ea0): a button of the inventory bar (child 0x559). */
-class Object11 : public HeldScript<Script> {
+class InventoryButton : public HeldScript<Script> {
 public:
-	Object11(GameObject *obj) : HeldScript<Script>(obj) {}
+	InventoryButton(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -416,9 +416,9 @@ protected:
 // --- Object 12 ---
 
 /** Object 12 (vtable 0x4b50a4, FUN_00474080): a gauge of the inventory bar (children 0x55a, 0x55b). */
-class Object12 : public HeldScript<Script> {
+class InventoryGauge : public HeldScript<Script> {
 public:
-	Object12(GameObject *obj) : HeldScript<Script>(obj) {}
+	InventoryGauge(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -452,9 +452,9 @@ protected:
  * 0x28 map entry -> (sound << 16) | object, 0x29 last entry, 0x2a count,
  * 0x2b shown entry. Globals: 0x4cab88 the sound playing, 0x4cab8c it was loaded here.
  */
-class Object13 : public HeldScript<Script> {
+class MessageLog : public HeldScript<Script> {
 public:
-	Object13(GameObject *obj) : HeldScript<Script>(obj) {}
+	MessageLog(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	enum {
@@ -653,9 +653,9 @@ protected:
  * Variables: 0x91 game running, 0x92, 0x93 the aim, 0x94 state
  * (0 aiming, 1 moving, 2 thrown, 3).
  */
-class Object30 : public HeldScript<Script> {
+class Room30 : public HeldScript<Script> {
 public:
-	Object30(GameObject *obj) : HeldScript<Script>(obj) {}
+	Room30(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	void dartLanded() {
@@ -898,9 +898,9 @@ protected:
  * Variables: 0x43 visited, 0x4e, 0x4f, 0x50, 0x51 door state (0 locked,
  * 1 closed, 2 open), 0x52 hatch open.
  */
-class Object36 : public HeldScript<ItemScript> {
+class Room36 : public HeldScript<ItemScript> {
 public:
-	Object36(GameObject *obj) : HeldScript<ItemScript>(obj) {}
+	Room36(GameObject *obj) : HeldScript<ItemScript>(obj) {}
 
 protected:
 	/** cmd Play p2 of a door: 0xc0003fff closed, 0xffff3fff open. */
@@ -1175,9 +1175,9 @@ protected:
  *
  * Variables: 0x43 visited, 0x6e map switch -> flipped, 0x6f.
  */
-class Object55 : public HeldScript<ItemScript> {
+class Room55 : public HeldScript<ItemScript> {
 public:
-	Object55(GameObject *obj) : HeldScript<ItemScript>(obj) {}
+	Room55(GameObject *obj) : HeldScript<ItemScript>(obj) {}
 
 protected:
 	struct Sprite {
@@ -1306,7 +1306,7 @@ protected:
 	}
 };
 
-const Object55::Sprite Object55::kSprites[60] = {
+const Room55::Sprite Room55::kSprites[60] = {
 	{ 0x209, 0xf2, 0x54, true }, { 0x20a, 0xf2, 0x54, false },
 	{ 0x21f, 0x100, 0x3e, false }, { 0x220, 0x100, 0x3e, true },
 	{ 0x223, 0x116, 0x2f, true }, { 0x224, 0x116, 0x2f, false },
@@ -1348,9 +1348,9 @@ const Object55::Sprite Object55::kSprites[60] = {
  *
  * Variables: 0x35 map room -> found, 0x36 counter, 0x37 the hiding spot (child) in the room.
  */
-class Object82 : public HeldScript<ItemScript> {
+class Item82 : public HeldScript<ItemScript> {
 public:
-	Object82(GameObject *obj) : HeldScript<ItemScript>(obj) {}
+	Item82(GameObject *obj) : HeldScript<ItemScript>(obj) {}
 
 protected:
 	struct Spot {
@@ -1506,14 +1506,14 @@ protected:
 	}
 };
 
-IVANOFF_SCRIPT(Object9) { return new Object9(obj); }
-IVANOFF_SCRIPT(Object10) { return new Object10(obj); }
-IVANOFF_SCRIPT(Object11) { return new Object11(obj); }
-IVANOFF_SCRIPT(Object12) { return new Object12(obj); }
-IVANOFF_SCRIPT(Object13) { return new Object13(obj); }
-IVANOFF_SCRIPT(Object30) { return new Object30(obj); }
-IVANOFF_SCRIPT(Object36) { return new Object36(obj); }
-IVANOFF_SCRIPT(Object55) { return new Object55(obj); }
-IVANOFF_SCRIPT(Object82) { return new Object82(obj); }
+IVANOFF_SCRIPT(TrashCan) { return new TrashCan(obj); }
+IVANOFF_SCRIPT(Inventory) { return new Inventory(obj); }
+IVANOFF_SCRIPT(InventoryButton) { return new InventoryButton(obj); }
+IVANOFF_SCRIPT(InventoryGauge) { return new InventoryGauge(obj); }
+IVANOFF_SCRIPT(MessageLog) { return new MessageLog(obj); }
+IVANOFF_SCRIPT(Room30) { return new Room30(obj); }
+IVANOFF_SCRIPT(Room36) { return new Room36(obj); }
+IVANOFF_SCRIPT(Room55) { return new Room55(obj); }
+IVANOFF_SCRIPT(Item82) { return new Item82(obj); }
 
 } // End of namespace Ivanoff

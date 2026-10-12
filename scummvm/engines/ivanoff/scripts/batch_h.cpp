@@ -159,15 +159,15 @@ private:
 };
 
 /** A kind of object 99 (FUN_004532e0) that lies in a room. */
-class Object99Item : public PlacedItem<Object99> {
+class PlacedItem99 : public PlacedItem<Item99> {
 public:
-	Object99Item(GameObject *obj, uint16 room, uint16 sprite, int32 x, int32 y) :
-		PlacedItem<Object99>(obj, room, sprite, x, y) {}
+	PlacedItem99(GameObject *obj, uint16 room, uint16 sprite, int32 x, int32 y) :
+		PlacedItem<Item99>(obj, room, sprite, x, y) {}
 
 	void handle(Message &msg) override {
 		handlePlace(msg);
 		if (msg.handled == 0)
-			Object99::handle(msg);
+			Item99::handle(msg);
 	}
 };
 
@@ -180,21 +180,21 @@ public:
 	};
 
 /** Object 66 (vtable 0x4b4a04, FUN_004059c0): shown while not picked up. */
-class Object66 : public RoomItemNotUsed {
+class Item66 : public RoomItemNotUsed {
 public:
-	Object66(GameObject *obj) : RoomItemNotUsed(obj, 0x7de07df, 0x2b, 0x2cc, 0xfa, 0x11d) {}
+	Item66(GameObject *obj) : RoomItemNotUsed(obj, 0x7de07df, 0x2b, 0x2cc, 0xfa, 0x11d) {}
 };
 
 /** Object 68 (vtable 0x4b49c4, FUN_00405f10). */
-ROOM_ITEM(Object68, 0x7e207e3, 0x20, 0x2d2, 0x14b, 0x10c)
+ROOM_ITEM(Item68, 0x7e207e3, 0x20, 0x2d2, 0x14b, 0x10c)
 /** Object 69 (vtable 0x4b49a4, FUN_004061c0). */
-ROOM_ITEM(Object69, 0x7e407e5, 0x17, 0x2d5, 0x114, 0xe9)
+ROOM_ITEM(Item69, 0x7e407e5, 0x17, 0x2d5, 0x114, 0xe9)
 /** Object 70 (vtable 0x4b4984, FUN_00406470). */
-ROOM_ITEM(Object70, 0x7e607e7, 0x19, 0x2d8, 0xed, 0x155)
+ROOM_ITEM(Item70, 0x7e607e7, 0x19, 0x2d8, 0xed, 0x155)
 /** Object 71 (vtable 0x4b4964, FUN_0040c930). */
-ROOM_ITEM(Object71, 0x7e807e9, 0x1c, 0x2db, 0x1d6, 0x9f)
+ROOM_ITEM(Item71, 0x7e807e9, 0x1c, 0x2db, 0x1d6, 0x9f)
 /** Object 87 (vtable 0x4b4764, FUN_00424270). */
-ROOM_ITEM(Object87, 0x8060807, 0x2b, 0x304, 0xbd, 0xeb)
+ROOM_ITEM(Item87, 0x8060807, 0x2b, 0x304, 0xbd, 0xeb)
 /** Vtable 0x4b52e4 (FUN_0045a1c0). */
 ROOM_ITEM(Object4b52e4, 0x8280829, 0x2c, 0x36a, 0x11d, 0x193)
 /** Vtable 0x4b5384 (FUN_0045eb70). */
@@ -217,17 +217,17 @@ ROOM_ITEM(Object4b5404, 0x83c083d, 0x1c, 0x38b, 0x151, 0xcc)
 	};
 
 /** Object 74 (vtable 0x4b4904, FUN_00412960). */
-LOOK_ITEM(Object74, 0x7ee07ef)
+LOOK_ITEM(Item74, 0x7ee07ef)
 /** Object 75 (vtable 0x4b48e4, FUN_00413860). */
-LOOK_ITEM(Object75, 0x7f007f1)
+LOOK_ITEM(Item75, 0x7f007f1)
 /** Object 78 (vtable 0x4b4884, FUN_004141f0). */
-LOOK_ITEM(Object78, 0x7f607f7)
+LOOK_ITEM(Item78, 0x7f607f7)
 /** Object 83 (vtable 0x4b47e4, FUN_0041fda0). */
-LOOK_ITEM(Object83, 0x7fe07ff)
+LOOK_ITEM(Item83, 0x7fe07ff)
 /** Object 89 (vtable 0x4b4724, FUN_00424790). */
-LOOK_ITEM(Object89, 0x80e080f)
+LOOK_ITEM(Item89, 0x80e080f)
 /** Object 95 (vtable 0x4b4664, FUN_0044b4f0). */
-LOOK_ITEM(Object95, 0x8120813)
+LOOK_ITEM(Item95, 0x8120813)
 /** Vtable 0x4b5304 (FUN_0045a810). */
 LOOK_ITEM(Object4b5304, 0x82c082d)
 /** Vtable 0x4b5344 (FUN_0045e5a0). */
@@ -238,9 +238,9 @@ LOOK_ITEM(Object4b53c4, 0x8380839)
 #undef LOOK_ITEM
 
 /** Object 73 (vtable 0x4b4924, FUN_0040fca0): message 0xd marks it picked up. */
-class Object73 : public RoomItem {
+class Item73 : public RoomItem {
 public:
-	Object73(GameObject *obj) : RoomItem(obj, 0x7ec07ed) {}
+	Item73(GameObject *obj) : RoomItem(obj, 0x7ec07ed) {}
 	void handle(Message &msg) override {
 		if (msg.msg == 0xd)
 			var(0x2d).set(1);
@@ -260,15 +260,15 @@ public:
 	};
 
 /** Object 77 (vtable 0x4b48a4, FUN_00413e30): takes item 0x4c, gives 0x4b. */
-COMBINE_ITEM(Object77, 0x7f407f5, 0x1b, 0x2e9, 0x105, 0xf, 0x4c, 0x4b)
+COMBINE_ITEM(Item77, 0x7f407f5, 0x1b, 0x2e9, 0x105, 0xf, 0x4c, 0x4b)
 /** Object 79 (vtable 0x4b4864, FUN_004143a0): takes item 0x75, gives 0x74. */
-COMBINE_ITEM(Object79, 0x7f807f9, 0x16, 0x2ee, 0x1fc, 0x163, 0x75, 0x74)
+COMBINE_ITEM(Item79, 0x7f807f9, 0x16, 0x2ee, 0x1fc, 0x163, 0x75, 0x74)
 /** Object 84 (vtable 0x4b47c4, FUN_0041ff50): takes item 0x55, gives 0x53. */
-COMBINE_ITEM(Object84, 0x8000801, 0x23, 0x2f9, 0x61, 0x171, 0x55, 0x53)
+COMBINE_ITEM(Item84, 0x8000801, 0x23, 0x2f9, 0x61, 0x171, 0x55, 0x53)
 /** Object 85 (vtable 0x4b47a4, FUN_00420370): takes item 0x54, gives 0x53. */
-COMBINE_ITEM(Object85, 0x8020803, 0x35, 0x2fc, 0x17a, 0xd4, 0x54, 0x53)
+COMBINE_ITEM(Item85, 0x8020803, 0x35, 0x2fc, 0x17a, 0xd4, 0x54, 0x53)
 /** Object 91 (vtable 0x4b46e4, FUN_00424d80): takes item 0x5a, gives 0x59. */
-COMBINE_ITEM(Object91, 0x80c080d, 0x31, 0x30d, 0x44, 0x179, 0x5a, 0x59)
+COMBINE_ITEM(Item91, 0x80c080d, 0x31, 0x30d, 0x44, 0x179, 0x5a, 0x59)
 /** Vtable 0x4b52c4 (FUN_00459da0): takes item 0x40, gives 0x79. */
 COMBINE_ITEM(Object4b52c4, 0x8260827, 0x18, 0x367, 0x1b5, 0x101, 0x40, 0x79)
 /** Vtable 0x4b5364 (FUN_0045e750): takes item 0x4f, gives 0x74. */
@@ -277,9 +277,9 @@ COMBINE_ITEM(Object4b5364, 0x8300831, 0x1c, 0x374, 0x128, 0x162, 0x4f, 0x74)
 #undef COMBINE_ITEM
 
 /** Object 90 (vtable 0x4b4704, FUN_00424940): takes item 0x5b, gives 0x59; shown once item 0x61 is used. */
-class Object90 : public CombineItem {
+class Item90 : public CombineItem {
 public:
-	Object90(GameObject *obj) : CombineItem(obj, 0x80a080b, 0x1f, 0x30a, 0x244, 0x152, 0x5b, 0x59) {}
+	Item90(GameObject *obj) : CombineItem(obj, 0x80a080b, 0x1f, 0x30a, 0x244, 0x152, 0x5b, 0x59) {}
 
 protected:
 	bool isShown() override {
@@ -290,27 +290,27 @@ protected:
 // --- Items with other conditions ---
 
 /** Object 80 (vtable 0x4b4844, FUN_00419430): looked at once var 0x4b of room 0x22 is 1. */
-class Object80 : public RoomItemNotUsed {
+class Item80 : public RoomItemNotUsed {
 public:
-	Object80(GameObject *obj) : RoomItemNotUsed(obj, 0x7fa07fb, 0x22, 0x2f1, 0xbb, 0xf5) {}
+	Item80(GameObject *obj) : RoomItemNotUsed(obj, 0x7fa07fb, 0x22, 0x2f1, 0xbb, 0xf5) {}
 
 protected:
 	int32 canLook() override { return var(0x4b, 0x22).get() == 1; }
 };
 
 /** Object 81 (vtable 0x4b4824, FUN_004196d0): like object 80. */
-class Object81 : public RoomItem {
+class Item81 : public RoomItem {
 public:
-	Object81(GameObject *obj) : RoomItem(obj, 0x7fc07fd, 0x22, 0x2f4, 0x245, 0x134) {}
+	Item81(GameObject *obj) : RoomItem(obj, 0x7fc07fd, 0x22, 0x2f4, 0x245, 0x134) {}
 
 protected:
 	int32 canLook() override { return var(0x4b, 0x22).get() == 1; }
 };
 
 /** Object 86 (vtable 0x4b4784, FUN_00423fa0). */
-class Object86 : public RoomItem {
+class Item86 : public RoomItem {
 public:
-	Object86(GameObject *obj) : RoomItem(obj, 0x8040805, 0x16, 0x301, 0x153, 0x15d) {}
+	Item86(GameObject *obj) : RoomItem(obj, 0x8040805, 0x16, 0x301, 0x153, 0x15d) {}
 
 protected:
 	bool isShown() override {
@@ -319,9 +319,9 @@ protected:
 };
 
 /** Object 88 (vtable 0x4b4744, FUN_00424520). */
-class Object88 : public RoomItem {
+class Item88 : public RoomItem {
 public:
-	Object88(GameObject *obj) : RoomItem(obj, 0x8080809, 0x1c, 0x307, 0x4c, 0x17f) {}
+	Item88(GameObject *obj) : RoomItem(obj, 0x8080809, 0x1c, 0x307, 0x4c, 0x17f) {}
 
 protected:
 	bool isShown() override {
@@ -330,9 +330,9 @@ protected:
 };
 
 /** Object 97 (vtable 0x4b4624, FUN_0044e800). */
-class Object97 : public RoomItem {
+class Item97 : public RoomItem {
 public:
-	Object97(GameObject *obj) : RoomItem(obj, 0x73e073d, 0x22, 0x33e, 0x126, 0x9b) {}
+	Item97(GameObject *obj) : RoomItem(obj, 0x73e073d, 0x22, 0x33e, 0x126, 0x9b) {}
 
 protected:
 	bool isShown() override {
@@ -342,9 +342,9 @@ protected:
 };
 
 /** Object 92 (vtable 0x4b46c4, FUN_00426080): the text depends on the sprite looked at. */
-class Object92 : public RoomItem {
+class Item92 : public RoomItem {
 public:
-	Object92(GameObject *obj) : RoomItem(obj, 0, 0x23, 0x312, 0x4d, 0xf) {}
+	Item92(GameObject *obj) : RoomItem(obj, 0, 0x23, 0x312, 0x4d, 0xf) {}
 	void handle(Message &msg) override {
 		if (msg.msg == 0x3c)
 			look(msg.p1);
@@ -369,9 +369,9 @@ private:
 };
 
 /** Object 93 (vtable 0x4b46a4, FUN_0043efd0): goes with object 94. */
-class Object93 : public ItemScript {
+class Item93 : public ItemScript {
 public:
-	Object93(GameObject *obj) : ItemScript(obj) {}
+	Item93(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		switch (msg.msg) {
 		case kMsgEnter:
@@ -398,9 +398,9 @@ public:
 };
 
 /** Object 94 (vtable 0x4b4684, FUN_0043f240). */
-class Object94 : public RoomItemNotUsed {
+class Item94 : public RoomItemNotUsed {
 public:
-	Object94(GameObject *obj) : RoomItemNotUsed(obj, 0x8100811, 0x24, 0x31b, 0x259, 0x153) {}
+	Item94(GameObject *obj) : RoomItemNotUsed(obj, 0x8100811, 0x24, 0x31b, 0x259, 0x153) {}
 	void handle(Message &msg) override {
 		switch (msg.msg) {
 		case 0x3b:
@@ -473,9 +473,9 @@ private:
 };
 
 /** Object 96 (vtable 0x4b4644, FUN_0044b6e0): two sprites, in rooms 0x27 and 0x25. */
-class Object96 : public ItemScript {
+class Item96 : public ItemScript {
 public:
-	Object96(GameObject *obj) : ItemScript(obj) {}
+	Item96(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		switch (msg.msg) {
 		case 0x3c:
@@ -539,9 +539,9 @@ public:
 };
 
 /** Object 98 (vtable 0x4b4604, FUN_00452480): takes the items 0x64-0x6f; its sprite shows a count (var 0x34). */
-class Object98 : public ItemScript {
+class Item98 : public ItemScript {
 public:
-	Object98(GameObject *obj) : ItemScript(obj) {}
+	Item98(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		switch (msg.msg) {
 		case 0x21:
@@ -625,15 +625,15 @@ public:
 // --- Kinds of object 99 that lie in a room ---
 
 #define OBJECT99_ITEM(name, room, sprite, x, y) \
-	class name : public Object99Item { \
+	class name : public PlacedItem99 { \
 	public: \
-		name(GameObject *obj) : Object99Item(obj, room, sprite, x, y) {} \
+		name(GameObject *obj) : PlacedItem99(obj, room, sprite, x, y) {} \
 	};
 
 /** Object 101 (vtable 0x4b45a4, FUN_00452d80). */
-OBJECT99_ITEM(Object101, 0x1c, 0x342, 0x195, 0x10f)
+OBJECT99_ITEM(Item101, 0x1c, 0x342, 0x195, 0x10f)
 /** Object 102 (vtable 0x4b4584, FUN_00452fb0). */
-OBJECT99_ITEM(Object102, 0x2d, 0x345, 499, 0x15c)
+OBJECT99_ITEM(Item102, 0x2d, 0x345, 499, 0x15c)
 /** Vtable 0x4b51c4 (FUN_00453770). */
 OBJECT99_ITEM(Object4b51c4, 0x2b, 0x34e, 0x72, 0x168)
 /** Vtable 0x4b51e4 (FUN_00453990). */
@@ -652,9 +652,9 @@ OBJECT99_ITEM(Object4b52a4, 0x19, 0x363, 0x214, 0xf3)
 #undef OBJECT99_ITEM
 
 /** Object 103 (vtable 0x4b4564, FUN_004531e0): shown once var 0xae of room 0x23 is set. */
-class Object103 : public Object99Item {
+class Item103 : public PlacedItem99 {
 public:
-	Object103(GameObject *obj) : Object99Item(obj, 0x23, 0x348, 0x1a7, 0x15f) {}
+	Item103(GameObject *obj) : PlacedItem99(obj, 0x23, 0x348, 0x1a7, 0x15f) {}
 
 protected:
 	bool isShown() override {
@@ -663,9 +663,9 @@ protected:
 };
 
 /** Vtable 0x4b5284 (FUN_00454460): shown once var 0xae of room 0x39 is set. */
-class Object4b5284 : public Object99Item {
+class Object4b5284 : public PlacedItem99 {
 public:
-	Object4b5284(GameObject *obj) : Object99Item(obj, 0x39, 0x360, 0xbe, 0x16e) {}
+	Object4b5284(GameObject *obj) : PlacedItem99(obj, 0x39, 0x360, 0xbe, 0x16e) {}
 
 protected:
 	bool isShown() override {

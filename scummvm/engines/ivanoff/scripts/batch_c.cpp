@@ -109,9 +109,9 @@ private:
  * animations and sounds. Escape (key 0x1b), a click or the last animation
  * ends it.
  */
-class Object2 : public BatchCScript {
+class Credits : public BatchCScript {
 public:
-	Object2(GameObject *obj) : BatchCScript(obj) {}
+	Credits(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -415,9 +415,9 @@ private:
 // --- Object 3 ---
 
 /** Object 3 (vtable 0x4b5164, FUN_00418f80): the opening animation. */
-class Object3 : public BatchCScript {
+class Intro : public BatchCScript {
 public:
-	Object3(GameObject *obj) : BatchCScript(obj) {}
+	Intro(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -487,9 +487,9 @@ protected:
  * 0xb7 maps rooms to their music; 0xb4 is the next music, 0xb5 the current
  * one (0xffff: none yet), 0xb6 the one to unload; 0xb8 music on.
  */
-class Object4 : public BatchCScript {
+class Music : public BatchCScript {
 public:
-	Object4(GameObject *obj) : BatchCScript(obj) {}
+	Music(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -584,9 +584,9 @@ private:
  * room 0x1a. Variables: 0x40 open, 0x41 the country shown, 0x42 its name
  * sprite while the mouse is over the map, 0x44 the speech toggle.
  */
-class Object33 : public BatchCScript {
+class CountryMap : public BatchCScript {
 public:
-	Object33(GameObject *obj) : BatchCScript(obj) {}
+	CountryMap(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -824,9 +824,9 @@ private:
  * the picture 0x4a8-0x4b0, whose texts go to children 0xb2b/0xb2c), 0x85 an
  * answer was chosen, 0x86 the number of answers, 0x87 the help is shown.
  */
-class Object47 : public BatchCScript {
+class Quiz : public BatchCScript {
 public:
-	Object47(GameObject *obj) : BatchCScript(obj) {}
+	Quiz(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	bool acceptsMessage(Message &msg) override {
@@ -1158,9 +1158,9 @@ private:
  * picture), 0x3a-0x3f the voices of its buttons per recipe, 0x44 a voice
  * is playing.
  */
-class Object48 : public BatchCScript {
+class RecipeBook : public BatchCScript {
 public:
-	Object48(GameObject *obj) : BatchCScript(obj) {}
+	RecipeBook(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1419,9 +1419,9 @@ private:
  * shelves 1-4 by column (0: none), 0x7d the column, 0x7e the shelf,
  * 0x7f Magnus's animation (0x488: standing).
  */
-class Object46 : public BatchCScript {
+class ClimbingGame : public BatchCScript {
 public:
-	Object46(GameObject *obj) : BatchCScript(obj) {}
+	ClimbingGame(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	bool acceptsMessage(Message &msg) override {
@@ -1816,12 +1816,12 @@ private:
 	}
 };
 
-IVANOFF_SCRIPT(Object2) { return new Object2(obj); }
-IVANOFF_SCRIPT(Object3) { return new Object3(obj); }
-IVANOFF_SCRIPT(Object4) { return new Object4(obj); }
-IVANOFF_SCRIPT(Object33) { return new Object33(obj); }
-IVANOFF_SCRIPT(Object46) { return new Object46(obj); }
-IVANOFF_SCRIPT(Object47) { return new Object47(obj); }
-IVANOFF_SCRIPT(Object48) { return new Object48(obj); }
+IVANOFF_SCRIPT(Credits) { return new Credits(obj); }
+IVANOFF_SCRIPT(Intro) { return new Intro(obj); }
+IVANOFF_SCRIPT(Music) { return new Music(obj); }
+IVANOFF_SCRIPT(CountryMap) { return new CountryMap(obj); }
+IVANOFF_SCRIPT(ClimbingGame) { return new ClimbingGame(obj); }
+IVANOFF_SCRIPT(Quiz) { return new Quiz(obj); }
+IVANOFF_SCRIPT(RecipeBook) { return new RecipeBook(obj); }
 
 } // End of namespace Ivanoff

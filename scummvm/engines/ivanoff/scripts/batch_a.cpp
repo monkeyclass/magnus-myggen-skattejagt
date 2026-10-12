@@ -166,9 +166,9 @@ protected:
  * Variables: 8 web links off, 9-0xb web link addresses, 0xd open,
  * 0xe sound level (0-255). Object 4's variable 0xb8: music on.
  */
-class Object8 : public BatchAScript {
+class Toolbar : public BatchAScript {
 public:
-	Object8(GameObject *obj) : BatchAScript(obj) {}
+	Toolbar(GameObject *obj) : BatchAScript(obj) {}
 
 	void handleMessage(Message &msg) override {
 		switch (msg.msg) {
@@ -455,9 +455,9 @@ uint32 slotPos(int32 slot) {
  * screen and the saved games (result: their number), 0x2b load slot p1,
  * 0x2c save slot p1 (p2 the room index).
  */
-class Object14 : public BatchAScript {
+class SaveScreen : public BatchAScript {
 public:
-	Object14(GameObject *obj) : BatchAScript(obj) {}
+	SaveScreen(GameObject *obj) : BatchAScript(obj) {}
 
 	void handleMessage(Message &msg) override {
 		switch (msg.msg) {
@@ -780,9 +780,9 @@ private:
  * Variables: 1 room, 2 busy, 4 changing room, 5 minutes played (0-60),
  * 6 no clock, 7 quit dialog open.
  */
-class Object17 : public BatchAScript {
+class GameState : public BatchAScript {
 public:
-	Object17(GameObject *obj) : BatchAScript(obj) {}
+	GameState(GameObject *obj) : BatchAScript(obj) {}
 
 	void handleMessage(Message &msg) override {
 		switch (msg.msg) {
@@ -1003,8 +1003,8 @@ private:
 	}
 };
 
-IVANOFF_SCRIPT(Object8) { return new Object8(obj); }
-IVANOFF_SCRIPT(Object14) { return new Object14(obj); }
-IVANOFF_SCRIPT(Object17) { return new Object17(obj); }
+IVANOFF_SCRIPT(Toolbar) { return new Toolbar(obj); }
+IVANOFF_SCRIPT(SaveScreen) { return new SaveScreen(obj); }
+IVANOFF_SCRIPT(GameState) { return new GameState(obj); }
 
 } // End of namespace Ivanoff

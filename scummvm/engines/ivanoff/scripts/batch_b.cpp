@@ -118,13 +118,13 @@ void SpeakerScript::handleMessage(Message &msg) {
 }
 
 /** Object 15 (vtable 0x4b5044, FUN_0043a0a0), Magnus [unverified]: his animations and voice in each room. */
-class Object15 : public SpeakerScript {
+class Magnus : public SpeakerScript {
 public:
-	Object15(GameObject *obj) : SpeakerScript(obj) {}
+	Magnus(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
-void Object15::handleMessage(Message &msg) {
+void Magnus::handleMessage(Message &msg) {
 	switch (var(1, kGameState).get()) {
 	case 0x16:
 		if (msg.msg == kMsgLeave) {
@@ -1039,13 +1039,13 @@ void Object15::handleMessage(Message &msg) {
 }
 
 /** Object 16 (vtable 0x4b5024, FUN_00446fd0), Myggen [unverified]: his animations and voice in each room. */
-class Object16 : public SpeakerScript {
+class Myggen : public SpeakerScript {
 public:
-	Object16(GameObject *obj) : SpeakerScript(obj) {}
+	Myggen(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
-void Object16::handleMessage(Message &msg) {
+void Myggen::handleMessage(Message &msg) {
 	switch (var(1, kGameState).get()) {
 	case 0x16:
 		if (msg.msg == kMsgLeave) {
@@ -2038,9 +2038,9 @@ void Object16::handleMessage(Message &msg) {
  * Object 18 (vtable 0x4b4fe4, FUN_00469e00), the narrator [unverified]:
  * loads its sounds in each room. It has no animations.
  */
-class Object18 : public SpeakerScript {
+class Narrator : public SpeakerScript {
 public:
-	Object18(GameObject *obj) : SpeakerScript(obj) {}
+	Narrator(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -2052,7 +2052,7 @@ private:
 	static const RoomSounds kRoomSounds[];
 };
 
-const Object18::RoomSounds Object18::kRoomSounds[] = {
+const Narrator::RoomSounds Narrator::kRoomSounds[] = {
 	{ 0x16, true, { 0x5b2, 0x5b4, 0x5b6, 0x5b8, 0x5b3, 0x5b5, 0x5b7, 0x5b9, 0 } },
 	{ 0x17, true, { 0x5c8, 0x5ca, 0x5cc, 0x5c9, 0x5cb, 0x5cd, 0 } },
 	{ 0x18, false, { 0x5df, 0x5e1, 0x5e0, 0x5e2, 0 } },
@@ -2090,7 +2090,7 @@ const Object18::RoomSounds Object18::kRoomSounds[] = {
 	{ 0, false, { 0 } }
 };
 
-void Object18::handleMessage(Message &msg) {
+void Narrator::handleMessage(Message &msg) {
 	var(0x10).set(0);
 	var(0x11).set(0);
 	int32 room = var(1, kGameState).get();
@@ -2120,13 +2120,13 @@ void Object18::handleMessage(Message &msg) {
 }
 
 /** Object 19 (vtable 0x4b4fc4, FUN_00406940), a character of room 0x18 [unverified]. */
-class Object19 : public SpeakerScript {
+class Character19 : public SpeakerScript {
 public:
-	Object19(GameObject *obj) : SpeakerScript(obj) {}
+	Character19(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
-void Object19::handleMessage(Message &msg) {
+void Character19::handleMessage(Message &msg) {
 	if (var(1, kGameState).get() == 0x18) {
 		switch (msg.msg) {
 		case kMsgLeave:
@@ -2223,13 +2223,13 @@ void Object19::handleMessage(Message &msg) {
 }
 
 /** Object 20 (vtable 0x4b4fa4, FUN_00405510), a character of room 0x1f [unverified]. */
-class Object20 : public SpeakerScript {
+class Character20 : public SpeakerScript {
 public:
-	Object20(GameObject *obj) : SpeakerScript(obj) {}
+	Character20(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
-void Object20::handleMessage(Message &msg) {
+void Character20::handleMessage(Message &msg) {
 	if (var(1, kGameState).get() == 0x1f) {
 		switch (msg.msg) {
 		case kMsgLeave:
@@ -2286,9 +2286,9 @@ void Object20::handleMessage(Message &msg) {
 }
 
 /** Object 21 (vtable 0x4b4f84, FUN_0045da70), a character of rooms 0x38 and 0x3b [unverified]. */
-class Object21 : public SpeakerScript {
+class Character21 : public SpeakerScript {
 public:
-	Object21(GameObject *obj) : SpeakerScript(obj) {}
+	Character21(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -2298,7 +2298,7 @@ private:
 	void comment38(bool withDefault);
 };
 
-void Object21::handleMessage(Message &msg) {
+void Character21::handleMessage(Message &msg) {
 	int32 room = var(1, kGameState).get();
 	if (room == 0x38)
 		handleRoom38(msg);
@@ -2308,7 +2308,7 @@ void Object21::handleMessage(Message &msg) {
 		SpeakerScript::handleMessage(msg);
 }
 
-void Object21::comment38(bool withDefault) {
+void Character21::comment38(bool withDefault) {
 	if (withDefault) {
 		if (var(0x19, 15).get() == 0)
 			send(16, kMsgSay, 0xa5c0a5b, 0xf);
@@ -2324,7 +2324,7 @@ void Object21::comment38(bool withDefault) {
 	}
 }
 
-void Object21::handleRoom38(Message &msg) {
+void Character21::handleRoom38(Message &msg) {
 	switch (msg.msg) {
 	case kMsgLeave:
 		cmd(kSelf, kCmdUnload, 0);
@@ -2417,7 +2417,7 @@ void Object21::handleRoom38(Message &msg) {
 	}
 }
 
-void Object21::handleRoom3b(Message &msg) {
+void Character21::handleRoom3b(Message &msg) {
 	switch (msg.msg) {
 	case kMsgLeave:
 		cmd(kSelf, kCmdUnload, 0);
@@ -2476,9 +2476,9 @@ void Object21::handleRoom3b(Message &msg) {
  * (p3 = the area: 1-6 down, 7-12 up) turns a wheel. The animations of the
  * wheels turning down/up are in the maps 0x76/0x77, the positions in 0x78.
  */
-class Object60 : public BatchBScript {
+class CombinationLock : public BatchBScript {
 public:
-	Object60(GameObject *obj) : BatchBScript(obj) {}
+	CombinationLock(GameObject *obj) : BatchBScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -2494,7 +2494,7 @@ private:
 	VarRef wheel(uint16 map, int32 i) { return var(map).at(i); }
 };
 
-void Object60::handleMessage(Message &msg) {
+void CombinationLock::handleMessage(Message &msg) {
 	switch (msg.msg) {
 	case kMsgLeave:
 		if (msg.p1 == 0x17) {
@@ -2645,9 +2645,9 @@ void Object60::handleMessage(Message &msg) {
  * value (var 0x5f), 0xb18-0xb1b the second (var 0x60); the text sprites
  * 0xb1c/0xb1d show them. The answer is 0x859 / 0x841.
  */
-class Object61 : public BatchBScript {
+class CodePanel : public BatchBScript {
 public:
-	Object61(GameObject *obj) : BatchBScript(obj) {}
+	CodePanel(GameObject *obj) : BatchBScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -2661,7 +2661,7 @@ private:
 	}
 };
 
-void Object61::sayValue(int32 value) {
+void CodePanel::sayValue(int32 value) {
 	switch (value) {
 	case 0x841:
 	case 0x843:
@@ -2678,7 +2678,7 @@ void Object61::sayValue(int32 value) {
 	}
 }
 
-void Object61::enableAll(int32 enable) {
+void CodePanel::enableAll(int32 enable) {
 	cmd(kSelf, kCmdEnable, 0x394, enable);
 	cmd(kSelf, kCmdEnable, 0x3a3, enable);
 	cmd(kSelf, kCmdEnable, 0xfe73, enable);
@@ -2686,7 +2686,7 @@ void Object61::enableAll(int32 enable) {
 	cmd(kSelf, kCmdEnable, 0xb1d, enable);
 }
 
-void Object61::handleMessage(Message &msg) {
+void CodePanel::handleMessage(Message &msg) {
 	if (var(1, kGameState).get() != 0x26) {
 		if (msg.handled == 0)
 			ObjectScript::handle(msg);
@@ -2830,13 +2830,13 @@ void Object61::handleMessage(Message &msg) {
 		ObjectScript::handle(msg);
 }
 
-IVANOFF_SCRIPT(Object15) { return new Object15(obj); }
-IVANOFF_SCRIPT(Object16) { return new Object16(obj); }
-IVANOFF_SCRIPT(Object18) { return new Object18(obj); }
-IVANOFF_SCRIPT(Object19) { return new Object19(obj); }
-IVANOFF_SCRIPT(Object20) { return new Object20(obj); }
-IVANOFF_SCRIPT(Object21) { return new Object21(obj); }
-IVANOFF_SCRIPT(Object60) { return new Object60(obj); }
-IVANOFF_SCRIPT(Object61) { return new Object61(obj); }
+IVANOFF_SCRIPT(Magnus) { return new Magnus(obj); }
+IVANOFF_SCRIPT(Myggen) { return new Myggen(obj); }
+IVANOFF_SCRIPT(Narrator) { return new Narrator(obj); }
+IVANOFF_SCRIPT(Character19) { return new Character19(obj); }
+IVANOFF_SCRIPT(Character20) { return new Character20(obj); }
+IVANOFF_SCRIPT(Character21) { return new Character21(obj); }
+IVANOFF_SCRIPT(CombinationLock) { return new CombinationLock(obj); }
+IVANOFF_SCRIPT(CodePanel) { return new CodePanel(obj); }
 
 } // End of namespace Ivanoff

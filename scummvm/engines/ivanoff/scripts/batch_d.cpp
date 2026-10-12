@@ -72,9 +72,9 @@ protected:
  * Variables: 0x64 map slot -> piece, 0x65 map slot -> position,
  * 0x66 map piece -> position, 0x67 map piece -> slot, 0x68, 0x69.
  */
-class Object22 : public RoomScript {
+class Room22 : public RoomScript {
 public:
-	Object22(GameObject *obj) : RoomScript(obj) {}
+	Room22(GameObject *obj) : RoomScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -148,9 +148,9 @@ private:
 	void onEnter();
 };
 
-const uint16 Object22::kPieces[9] = { 0xf, 0x2f, 5, 0xc, 8, 0x27, 0x2d, 0x15, 0x25 };
+const uint16 Room22::kPieces[9] = { 0xf, 0x2f, 5, 0xc, 8, 0x27, 0x2d, 0x15, 0x25 };
 
-void Object22::onEnter() {
+void Room22::onEnter() {
 	static const uint16 kSprites[] = {
 		1, 7, 0x2c, 0x29, 0xb, 0x1b, 0x2a,
 		0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24
@@ -196,7 +196,7 @@ void Object22::onEnter() {
 	cmd(kSelf, kCmdSetPos, 4, 0x14d, 0x15a, 0x65);
 }
 
-void Object22::handleMessage(Message &msg) {
+void Room22::handleMessage(Message &msg) {
 	switch (msg.msg) {
 	case kMsgClick:
 		switch (msg.p1) {
@@ -399,9 +399,9 @@ void Object22::handleMessage(Message &msg) {
  * Variables: 0xa6 the free slot, 0xa7 map slot -> item (1-5),
  * 0xa8 dragging allowed.
  */
-class Object26 : public RoomScript {
+class Room26 : public RoomScript {
 public:
-	Object26(GameObject *obj) : RoomScript(obj) {}
+	Room26(GameObject *obj) : RoomScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -433,7 +433,7 @@ private:
 	void handleRoom(Message &msg);
 };
 
-void Object26::placeItems(bool play) {
+void Room26::placeItems(bool play) {
 	static const int32 kPos[5][3] = {
 		{ 0xa5, 0x150, 0x96 },
 		{ 0xe3, 0x13e, 0x8c },
@@ -451,7 +451,7 @@ void Object26::placeItems(bool play) {
 	}
 }
 
-void Object26::layoutSlots() {
+void Room26::layoutSlots() {
 	// 0x52: draws the items on the slots, from the top (5) down.
 	static const int32 kSlotPos[6] = { 0, 0x13f0194, 0x10c0192, 0xd90197, 0xa60192, 0x73019b };
 	bool first = true;
@@ -473,7 +473,7 @@ void Object26::layoutSlots() {
 		var(0xa6).set(0x65);
 }
 
-void Object26::checkStack() {
+void Room26::checkStack() {
 	// 0x53: all five stacked, the largest at the bottom?
 	if (var(0xa7).at(5).get() == 0)
 		return;
@@ -498,7 +498,7 @@ void Object26::checkStack() {
 	}
 }
 
-void Object26::takeOff(Message &msg) {
+void Room26::takeOff(Message &msg) {
 	VarRef pos = var(0x2e);
 	pos.set(cmd(kSelf, kCmdGetPos, msg.p1));
 	int32 grab = cmd(kSelf, kCmdRelPos, msg.p1, msg.p2);
@@ -524,7 +524,7 @@ void Object26::takeOff(Message &msg) {
 	send(kSelf, 0x52);
 }
 
-void Object26::handleRoom(Message &msg) {
+void Room26::handleRoom(Message &msg) {
 	switch (msg.msg) {
 	case kMsgDragStartAlt:
 		takeOff(msg);
@@ -683,7 +683,7 @@ void Object26::handleRoom(Message &msg) {
 	}
 }
 
-void Object26::handleMessage(Message &msg) {
+void Room26::handleMessage(Message &msg) {
 	if (var(1, kGameState).get() == 0x1a)
 		handleRoom(msg);
 
@@ -825,9 +825,9 @@ protected:
 };
 
 /** Object 40 (vtable 0x4b4d24, FUN_00428f40): room 0x28, a maze. */
-class Object40 : public MazeRoom {
+class Room40 : public MazeRoom {
 public:
-	Object40(GameObject *obj) : MazeRoom(obj, 0x28, 0xfe41, 0x28, 0x2a) {}
+	Room40(GameObject *obj) : MazeRoom(obj, 0x28, 0xfe41, 0x28, 0x2a) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -874,7 +874,7 @@ private:
 	}
 };
 
-void Object40::onEnter() {
+void Room40::onEnter() {
 	static const uint16 kViews[][2] = {
 		{ 0xfe1f, 0xab4 }, { 0xfe20, 0xab5 }, { 0xfe21, 0xab6 }, { 0xfe23, 0xab7 },
 		{ 0xfe25, 0xab8 }, { 0xfe26, 0xab9 }, { 0xfe28, 0xaba }, { 0xfe29, 0xabd },
@@ -920,7 +920,7 @@ void Object40::onEnter() {
 	send(kSpeech, kMsgSay, 0x89c);
 }
 
-void Object40::handleMessage(Message &msg) {
+void Room40::handleMessage(Message &msg) {
 	if (var(1, kGameState).get() != _room)
 		goto base;
 	if (msg.msg == kMsgEnter) {
@@ -1063,9 +1063,9 @@ base:
 }
 
 /** Object 42 (vtable 0x4b4ce4, FUN_0042ce50): room 0x2a, the second maze. */
-class Object42 : public MazeRoom {
+class Room42 : public MazeRoom {
 public:
-	Object42(GameObject *obj) : MazeRoom(obj, 0x2a, 0xfe61, 0x2a, 0x38) {}
+	Room42(GameObject *obj) : MazeRoom(obj, 0x2a, 0xfe61, 0x2a, 0x38) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -1093,7 +1093,7 @@ private:
 	}
 };
 
-void Object42::onEnter() {
+void Room42::onEnter() {
 	static const uint16 kViews[][2] = {
 		{ 0xfe51, 0xade }, { 0xfe52, 0xadf }, { 0xfe54, 0xae1 }, { 0xfe55, 0xae2 },
 		{ 0xfe56, 0xae3 }, { 0xfe57, 0xae4 }, { 0xfe59, 0xae5 }, { 0xfe5a, 0xae7 },
@@ -1137,7 +1137,7 @@ void Object42::onEnter() {
 	send(kSpeech, kMsgSay, 0x89f);
 }
 
-void Object42::handleMessage(Message &msg) {
+void Room42::handleMessage(Message &msg) {
 	if (var(1, kGameState).get() != _room)
 		goto base;
 	if (msg.msg == kMsgEnter) {
@@ -1348,9 +1348,9 @@ base:
 		ObjectScript::handle(msg);
 }
 
-IVANOFF_SCRIPT(Object22) { return new Object22(obj); }
-IVANOFF_SCRIPT(Object26) { return new Object26(obj); }
-IVANOFF_SCRIPT(Object40) { return new Object40(obj); }
-IVANOFF_SCRIPT(Object42) { return new Object42(obj); }
+IVANOFF_SCRIPT(Room22) { return new Room22(obj); }
+IVANOFF_SCRIPT(Room26) { return new Room26(obj); }
+IVANOFF_SCRIPT(Room40) { return new Room40(obj); }
+IVANOFF_SCRIPT(Room42) { return new Room42(obj); }
 
 } // End of namespace Ivanoff

@@ -69,9 +69,9 @@ public:
  * Object 99 (vtable 0x4b45e4, FUN_004532e0), an item that takes the items
  * 0x62 and 0x64-0x6f; the base of objects 100-103 and others.
  */
-class Object99 : public ItemScript {
+class Item99 : public ItemScript {
 public:
-	Object99(GameObject *obj) : ItemScript(obj) {}
+	Item99(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override;
 
 private:

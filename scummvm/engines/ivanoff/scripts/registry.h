@@ -2,11 +2,11 @@
 // Included by registry.cpp.
 
 SCRIPT(0x4b51a4, ObjectScript)
-SCRIPT(0x4b45c4, Object100)
-SCRIPT(0x4b45e4, Object99)
-SCRIPT(0x4b48c4, Object76)
-SCRIPT(0x4b4944, Object72)
-SCRIPT(0x4b49e4, Object67)
+SCRIPT(0x4b45c4, Item100)
+SCRIPT(0x4b45e4, Item99)
+SCRIPT(0x4b48c4, Item76)
+SCRIPT(0x4b4944, Item72)
+SCRIPT(0x4b49e4, Item67)
 
 // Each porting batch has its own list.
 #include "ivanoff/scripts/registry_a.h"
