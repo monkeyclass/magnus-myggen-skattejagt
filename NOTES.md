@@ -188,3 +188,9 @@
   menu saves byte-identical. The checking tools still need a build of an earlier version (git history) to make
   new baselines.
 - The in-game volume slider now sets the mixer volume of the game's sounds (DAT_004c6940 was written but unused).
+- **2026-10-12: ScummVM integration.** Save/load through ScummVM (launcher, in-game menu, autosave): a ScummVM
+  save holds the original's records, and loading runs the original load screen's room switch (object 14,
+  `kMsgEngineLoad`); allowed when the original allows F5/F6. Keymapper (Esc, arrows, space, F5/F6, joystick).
+- **Bug found:** keyboard input passed ScummVM key codes for arrows and F-keys, which the game logic (Windows
+  virtual key codes) doesn't know: the arrow-key games and F5/F6 couldn't work. The deterministic checks never
+  used the keyboard (only clicks and messages), so they didn't catch it. **[unverified by play]**

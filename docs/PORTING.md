@@ -1,40 +1,37 @@
 # Porting the game logic to native code
 
-The ScummVM engine (`scummvm/engines/ivanoff`) runs the original game logic
-of `mm2run.exe` in an x86 interpreter. The rewrite replaces it, class by
-class, with native C++ written against the same engine API. This document
-is the guide for that work.
+The game logic of `mm2run.exe` (about 120 C++ classes) is now native C++ in
+`scummvm/engines/ivanoff/scripts/`. This document describes how it was
+ported and checked, for changes to it.
 
-## How the hybrid works
+## History
 
-Every top-level object of the game is an instance of a class with vtable
-slots 3-6: `createVars`, `createChildren`, `accepts(msg)` and `handle(msg)`.
+1. The engine first ran the original game logic in an x86 interpreter,
+   with the engine functions it calls trapped and implemented natively.
+2. Each class's slots 5/6 (`accepts`, `handle`) were ported to a native
+   `Script`, chosen by the class's vtable (`scripts/registry.h`), while the
+   objects, variables and children still came from the original code.
+3. The variables (`vars.cpp`) and the setup (`scripts/setup.cpp`, generated
+   by `tools/port/gensetup.py` from a recording of the original setup) were
+   made native, then the interpreter was removed.
 
-* The objects, their variables and their children are still created by the
-  original setup code in the interpreter (`Machine::createObjects`).
-* `Machine::attachScripts` then gives each object whose class is ported a
-  native `Script` (`script.h`), chosen by the class's vtable address
-  (`scripts/registry.h`). `EmuObject::accepts/handle` call the script
-  instead of the original slots 5/6.
-* Variables stay in the interpreter's memory for now: `VarRef` calls their
-  methods by vtable slot, so random, cycler and shuffle variables behave
-  exactly like the original.
-
-Config keys for testing: `native_scripts` (`all`, `none` or a list of
-vtables, hex, comma separated) and `native_exclude`.
+Every step was checked against the original code with the deterministic
+traces below; the interpreter is in the git history (before 2026-10-12,
+commit `29e3dfa`) for making new reference traces.
 
 ## Checking a port
 
 All runs are deterministic with `virtual_clock=<ms>` and `random_seed`, so
 a run with the native logic must produce exactly the same message and
-command trace (`-d4`) as the same run with the original code. Tools:
+command trace (`-d4`) as the same run with the original code (reference
+traces made with an interpreter version and `native_scripts=none`). Tools:
 
 * `debug_events` (see `ivanoff.cpp`): `ms:esc`, `ms:click:x,y`,
   `ms:crawl:count,interval` (clicks random clickable things),
   `ms:fuzz:count,interval` (random messages to the objects, built from
   `fuzz_dict`; `fuzz_vars=true` also sets their variables;
   `fuzz_vtables` limits it to some classes), `ms:quit`.
-* `coverage=<file>`: the executed instructions of the original code.
+* `coverage=<file>` (interpreter versions only): the executed instructions of the original code.
 * `tools/port/fuzzdict.py`: builds `fuzz_dict` from the typed decompilation.
 * `tools/port/coverage.py`: per class, how much of the handler a set of
   runs executed.
@@ -61,6 +58,8 @@ original's code). Mapping to the native API:
 | `(*v->vtbl->set)(v,x)`, `add`, `sub` | `v.set(x)`, `v.add(n)`, `v.sub(n)` |
 | `(*v->vtbl->at)(v,k)` | `v.at(k)` (element of a map variable) |
 | `(*v->vtbl->x54)(v,tmp,...)` + destructor `FUN_0049fec5(tmp+0xc)` | `v.postIncrement()` (`v++`; the copy it returns is discarded); `x5c`: `v.postDecrement()` |
+| `(*v->vtbl->toString)(v,out)` / `assignString` | `v.toString()` / `v.assignString(s)` |
+| `newCmd`/`newMsg` + command 9 | `cmdFrameTrigger(target, child, frame, makeCmd(...))` |
 | `setCursor(this,c)` | `setCursor(c)` |
 | `newMsg(this,t,m,p1,p2,p3)` + `startTimer(this,id,ms,msg)` | `startTimer(id, ms, t, m, p1, p2, p3)` |
 | `newCmd(...)` + `startTimer` | `startCmdTimer(id, ms, t, c, child, p1, p2, p3)` |
@@ -68,9 +67,7 @@ original's code). Mapping to the native API:
 | `setKeyFocus(this,o)` | `setKeyFocus(o)` |
 | `getChild(this,id)` / `getChildOf(this,id,o)` | `getChild(id)` / `getChild(id, o)` |
 | `DAT_xxxxxxxx` (globals) | `global32(0x...)` / `setGlobal32(0x..., v)` |
-| fields of `this` past 0x1c | `machine().mem().r32(self() + off)` etc. |
-| a game function not ported yet | `callGame(addr, nargs, args)` (this = the object) |
-| a handler of another class, not ported yet | `callHandler(addr, msg)` |
+| `this+0x18` (event mask) | `setEventMask(mask)` |
 
 Base classes (the `if (msg->handled == 0) BASE(this, msg)` at the end of
 most handlers):
