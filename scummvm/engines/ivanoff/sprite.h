@@ -349,6 +349,8 @@ public:
 	void stop() override;
 	void update(uint32 now) override;
 	bool isPlaying() const;
+	/** The game's volume changed (0-255). */
+	void setVolume(byte volume);
 
 private:
 	Audio::SoundHandle _handle;

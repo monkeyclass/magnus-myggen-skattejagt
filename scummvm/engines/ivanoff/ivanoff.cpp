@@ -179,6 +179,20 @@ Common::Error IvanoffEngine::run() {
 	return Common::kNoError;
 }
 
+void IvanoffEngine::setGlobal(uint32 addr, int32 value) {
+	_globals[addr] = value;
+	if (addr == kGlobalVolume) {
+		// waveOutSetVolume in the original: the sounds playing change too.
+		const Common::Array<GameObject *> &objs = _world->getObjects();
+		for (uint i = 0; i < objs.size(); i++) {
+			const Common::Array<Child *> &ch = objs[i]->getChildren();
+			for (uint j = 0; j < ch.size(); j++)
+				if (Sound *snd = dynamic_cast<Sound *>(ch[j]))
+					snd->setVolume(getGameVolume());
+		}
+	}
+}
+
 void IvanoffEngine::debugFault(const char *what) {
 	if (!ConfMan.hasKey("debug_events"))
 		return;

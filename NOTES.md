@@ -180,3 +180,11 @@
   original). The settings class is native (INI `C:\MM2\appdata\settings.dat`). Check: 189/190 runs identical; the
   one difference is a fuzz run where the original runs out of interpreter heap (its leaks) and stops. Saves made
   through the menu are byte-identical to the original's (rooms 22, 36).
+- **2026-10-12: the interpreter is gone.** The engine is native: no x86 interpreter, no traps, no emulated memory.
+  The scripts use native variables, strings, frame-trigger messages (`Message::trigger`) and text commands
+  (`Message::text`); the globals are a native table with mm2run.exe's initial values; the files, INI and
+  registry values are `files.cpp`. `mm2run.exe` is still read for its cursors. Check against the original
+  (interpreted) code's traces: 189/190 runs identical (the other: the original runs out of heap while fuzzing);
+  menu saves byte-identical. The checking tools still need a build of an earlier version (git history) to make
+  new baselines.
+- The in-game volume slider now sets the mixer volume of the game's sounds (DAT_004c6940 was written but unused).

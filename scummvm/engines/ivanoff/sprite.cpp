@@ -960,7 +960,7 @@ void Sound::play(int32 p1, int32 p2, int32 p3) {
 	if (_param != 1)
 		stream = Audio::makeLoopingAudioStream(audio, _param);
 	g_engine->_mixer->playStream(Audio::Mixer::kSFXSoundType, &_handle, stream, -1,
-	                             Audio::Mixer::kMaxChannelVolume, 0, DisposeAfterUse::YES);
+	                             g_engine->getGameVolume(), 0, DisposeAfterUse::YES);
 	_playing = true;
 }
 
@@ -971,6 +971,11 @@ void Sound::stop() {
 	_playing = false;
 	_visible = false;
 	_notify = 0;
+}
+
+void Sound::setVolume(byte volume) {
+	if (_playing && !g_engine->hasVirtualClock())
+		g_engine->_mixer->setChannelVolume(_handle, volume);
 }
 
 bool Sound::isActive() const {

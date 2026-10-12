@@ -101,7 +101,10 @@ public:
 	 * address; the initial values are those of mm2run.exe's data.
 	 */
 	int32 getGlobal(uint32 addr) const { return _globals.contains(addr) ? _globals[addr] : 0; }
-	void setGlobal(uint32 addr, int32 value) { _globals[addr] = value; }
+	void setGlobal(uint32 addr, int32 value);
+	/** The game's sound volume (DAT_004c6940, its low byte), for the mixer (0-255). */
+	byte getGameVolume() const { return getGlobal(kGlobalVolume) & 0xff; }
+	enum { kGlobalVolume = 0x4c6940 };
 
 	/** Draws the screen now (the original's synchronous repaint). */
 	void redrawNow() { render(); }
