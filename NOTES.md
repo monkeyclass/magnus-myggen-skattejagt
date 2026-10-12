@@ -194,3 +194,7 @@
 - **Bug found:** keyboard input passed ScummVM key codes for arrows and F-keys, which the game logic (Windows
   virtual key codes) doesn't know: the arrow-key games and F5/F6 couldn't work. The deterministic checks never
   used the keyboard (only clicks and messages), so they didn't catch it. **[unverified by play]**
+- **2026-10-12: more fuzzing.** The message fuzzing now also starts in the 20 rooms it skipped (25, 26, 28, 30-33,
+  37, 39, 41, 42, 45, 50, 51, 54, 56-59, 62): 120 new runs, all identical to the original. Handler coverage of the
+  original code by the checks: 66% (was about 50%). The check is now 310 runs (309 identical; the other is the
+  original's heap exhaustion). Keyboard input is checked only as fuzzed key messages, not through the key mapping.
