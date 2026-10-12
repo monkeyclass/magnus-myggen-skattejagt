@@ -124,9 +124,6 @@ public:
 	virtual bool isPaused() const { return false; }
 	bool testBit(uint16 bit) const;
 
-	/** The child's memory in the emulated game (see Machine), or 0. */
-	uint32 _addr = 0;
-
 	/** Disable input for a while (+0x14 "busy"). */
 	bool _busy = false;
 	/** +0x54 (command 0x2c) */
@@ -142,7 +139,7 @@ protected:
 	bool _visible = false;
 	bool _disabled = false;
 	uint16 _altResource = 0; ///< +0x50: load this resource instead of _id
-	/** The resource to load: +0x50, which the game sets directly in the child's memory, or the id. */
+	/** The resource to load: +0x50, or the id. */
 	uint16 resourceId() const;
 	Common::Array<uint16> _bits; ///< FUN_00477860 flag bits (commands 0x29-0x2b)
 

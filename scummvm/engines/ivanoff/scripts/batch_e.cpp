@@ -22,7 +22,6 @@
 // Batch e: the inventory bar and its buttons (objects 9-13), the rooms
 // 0x1c (object 30), 0x24 (object 36) and 0x37 (object 55), and object 82.
 
-#include "ivanoff/machine.h"
 #include "ivanoff/scripts/scripts.h"
 
 namespace Ivanoff {
@@ -38,25 +37,13 @@ enum {
 	kNewCommand = 0x476c50     ///< FUN_00476c50: a command message on the heap
 };
 
-/**
- * The original handlers run with a Message (0x2c bytes) on the heap
- * (EmuObject::accepts/handle allocate it); holding a block of that size
- * keeps the heap addresses of later allocations the same.
- */
-class HeapBlock {
-public:
-	HeapBlock(Machine &m) : _m(m), _addr(0) {}
-private:
-	Machine &_m;
-	uint32 _addr;
-};
 
 /**
  * Var slots 0x54 / 0x5c (v++ / v--): the temporary copy they return (a
  * variable object, 0x1c bytes, with a CString at +0xc) lives on the
  * stack in the original, so it is kept off the heap here too.
  */
-static void postStep(Machine &m, VarRef v, uint32 slot) {
+static void postStep(VarRef v, uint32 slot) {
 	if (slot == 0x54)
 		v.postIncrement();
 	else
@@ -67,23 +54,21 @@ static void postStep(Machine &m, VarRef v, uint32 slot) {
 template<class Base>
 class HeldScript : public Base {
 public:
-	HeldScript(EmuObject *obj) : Base(obj) {}
+	HeldScript(GameObject *obj) : Base(obj) {}
 
 	bool accepts(Message &msg) override {
-		HeapBlock block(this->machine());
 		return Base::accepts(msg);
 	}
 
 	void handle(Message &msg) override {
-		HeapBlock block(this->machine());
 		handleMessage(msg);
 	}
 
 protected:
 	virtual void handleMessage(Message &msg) = 0;
 
-	void postIncrement(VarRef v) { postStep(this->machine(), v, 0x54); }
-	void postDecrement(VarRef v) { postStep(this->machine(), v, 0x5c); }
+	void postIncrement(VarRef v) { postStep(v, 0x54); }
+	void postDecrement(VarRef v) { postStep(v, 0x5c); }
 
 	/** Writes the object's event mask (+0x18). */
 	void setEventMask(uint32 mask) {
@@ -113,7 +98,7 @@ protected:
 /** Object 9 (vtable 0x4b5104, FUN_00434590): the trash can of the inventory bar (child 0x54d) [unverified]. */
 class Object9 : public HeldScript<Script> {
 public:
-	Object9(EmuObject *obj) : HeldScript<Script>(obj) {}
+	Object9(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	/** Children over which the drag cursor stays the plain one. */
@@ -196,7 +181,7 @@ protected:
  */
 class Object10 : public HeldScript<Script> {
 public:
-	Object10(EmuObject *obj) : HeldScript<Script>(obj) {}
+	Object10(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	enum {
@@ -419,7 +404,7 @@ protected:
 /** Object 11 (vtable 0x4b50c4, FUN_00470ea0): a button of the inventory bar (child 0x559). */
 class Object11 : public HeldScript<Script> {
 public:
-	Object11(EmuObject *obj) : HeldScript<Script>(obj) {}
+	Object11(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -446,7 +431,7 @@ protected:
 /** Object 12 (vtable 0x4b50a4, FUN_00474080): a gauge of the inventory bar (children 0x55a, 0x55b). */
 class Object12 : public HeldScript<Script> {
 public:
-	Object12(EmuObject *obj) : HeldScript<Script>(obj) {}
+	Object12(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -482,7 +467,7 @@ protected:
  */
 class Object13 : public HeldScript<Script> {
 public:
-	Object13(EmuObject *obj) : HeldScript<Script>(obj) {}
+	Object13(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	enum {
@@ -683,7 +668,7 @@ protected:
  */
 class Object30 : public HeldScript<Script> {
 public:
-	Object30(EmuObject *obj) : HeldScript<Script>(obj) {}
+	Object30(GameObject *obj) : HeldScript<Script>(obj) {}
 
 protected:
 	void dartLanded() {
@@ -928,7 +913,7 @@ protected:
  */
 class Object36 : public HeldScript<ItemScript> {
 public:
-	Object36(EmuObject *obj) : HeldScript<ItemScript>(obj) {}
+	Object36(GameObject *obj) : HeldScript<ItemScript>(obj) {}
 
 protected:
 	/** cmd Play p2 of a door: 0xc0003fff closed, 0xffff3fff open. */
@@ -1205,7 +1190,7 @@ protected:
  */
 class Object55 : public HeldScript<ItemScript> {
 public:
-	Object55(EmuObject *obj) : HeldScript<ItemScript>(obj) {}
+	Object55(GameObject *obj) : HeldScript<ItemScript>(obj) {}
 
 protected:
 	struct Sprite {
@@ -1378,7 +1363,7 @@ const Object55::Sprite Object55::kSprites[60] = {
  */
 class Object82 : public HeldScript<ItemScript> {
 public:
-	Object82(EmuObject *obj) : HeldScript<ItemScript>(obj) {}
+	Object82(GameObject *obj) : HeldScript<ItemScript>(obj) {}
 
 protected:
 	struct Spot {

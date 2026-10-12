@@ -22,7 +22,6 @@
 // Rooms: objects that handle their messages only while the game is in
 // their room (variable 1 of the game state object).
 
-#include "ivanoff/machine.h"
 #include "common/system.h"
 
 #include "ivanoff/scripts/scripts.h"
@@ -42,7 +41,7 @@ enum {
  */
 class RoomScript : public ObjectScript {
 public:
-	RoomScript(EmuObject *obj) : ObjectScript(obj) {}
+	RoomScript(GameObject *obj) : ObjectScript(obj) {}
 
 	bool accepts(Message &msg) override {
 		if (var(kVarDragMode, kGameState).get() == 1 && msg.msg == kMsgClick)
@@ -89,7 +88,7 @@ protected:
 /** Object 23 (vtable 0x4b4f44, FUN_00403e20), room 0x17. */
 class Object23 : public RoomScript {
 public:
-	Object23(EmuObject *obj) : RoomScript(obj) {}
+	Object23(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x17)
 			handleRoom(msg);
@@ -183,7 +182,7 @@ private:
 /** Object 24 (vtable 0x4b4f24, FUN_004050b0), room 0x18. */
 class Object24 : public RoomScript {
 public:
-	Object24(EmuObject *obj) : RoomScript(obj) {}
+	Object24(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x18) {
 			switch (msg.msg) {
@@ -229,7 +228,7 @@ public:
 /** Object 25 (vtable 0x4b4f04, FUN_00407440), room 0x19. */
 class Object25 : public RoomScript {
 public:
-	Object25(EmuObject *obj) : RoomScript(obj) {}
+	Object25(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		_now = currentTime();
 		if (currentRoom() == 0x19)
@@ -356,7 +355,7 @@ private:
 /** Object 27 (vtable 0x4b4ec4, FUN_0040abc0), room 0x1b (and its part of room 0x25). */
 class Object27 : public RoomScript {
 public:
-	Object27(EmuObject *obj) : RoomScript(obj) {}
+	Object27(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		int32 room = currentRoom();
 		if (room == 0x1b)
@@ -528,7 +527,7 @@ private:
 /** Object 28 (vtable 0x4b4ea4, FUN_0040bcb0), room 0x1c. */
 class Object28 : public RoomScript {
 public:
-	Object28(EmuObject *obj) : RoomScript(obj) {}
+	Object28(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x1c)
 			handleRoom(msg);
@@ -710,7 +709,7 @@ private:
 /** Object 29 (vtable 0x4b4e84, FUN_004104a0), room 0x1d. */
 class Object29 : public RoomScript {
 public:
-	Object29(EmuObject *obj) : RoomScript(obj) {}
+	Object29(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x1d)
 			handleRoom(msg);
@@ -931,7 +930,7 @@ private:
 /** Object 31 (vtable 0x4b4e44, FUN_00412c80), room 0x1f. */
 class Object31 : public RoomScript {
 public:
-	Object31(EmuObject *obj) : RoomScript(obj) {}
+	Object31(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x1f)
 			handleRoom(msg);
@@ -1066,7 +1065,7 @@ private:
 /** Object 32 (vtable 0x4b4e24, FUN_004134e0), room 0x20. */
 class Object32 : public RoomScript {
 public:
-	Object32(EmuObject *obj) : RoomScript(obj) {}
+	Object32(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x20) {
 			switch (msg.msg) {
@@ -1118,7 +1117,7 @@ public:
 /** Object 34 (vtable 0x4b4de4, FUN_0041d240), room 0x22. */
 class Object34 : public RoomScript {
 public:
-	Object34(EmuObject *obj) : RoomScript(obj) {}
+	Object34(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x22)
 			handleRoom(msg);
@@ -1327,7 +1326,7 @@ private:
 /** Object 35 (vtable 0x4b4dc4, FUN_0041e160), room 0x23. */
 class Object35 : public RoomScript {
 public:
-	Object35(EmuObject *obj) : RoomScript(obj) {}
+	Object35(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x23)
 			handleRoom(msg);
@@ -1443,7 +1442,7 @@ private:
 /** Object 37 (vtable 0x4b4d84, FUN_004209e0), room 0x25. */
 class Object37 : public RoomScript {
 public:
-	Object37(EmuObject *obj) : RoomScript(obj) {}
+	Object37(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x25)
 			handleRoom(msg);
@@ -1619,7 +1618,7 @@ private:
 /** Object 38 (vtable 0x4b4d64, FUN_00425400), room 0x26. */
 class Object38 : public RoomScript {
 public:
-	Object38(EmuObject *obj) : RoomScript(obj) {}
+	Object38(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x26)
 			handleRoom(msg);
@@ -1823,7 +1822,7 @@ private:
 /** Object 39 (vtable 0x4b4d44, FUN_004264c0), room 0x27. */
 class Object39 : public RoomScript {
 public:
-	Object39(EmuObject *obj) : RoomScript(obj) {}
+	Object39(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x27)
 			handleRoom(msg);
@@ -1926,7 +1925,7 @@ private:
 /** Object 41 (vtable 0x4b4d04, FUN_0042af10), room 0x29. */
 class Object41 : public RoomScript {
 public:
-	Object41(EmuObject *obj) : RoomScript(obj) {}
+	Object41(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x29) {
 			if (msg.msg == kMsgExit)
@@ -1942,7 +1941,7 @@ public:
 /** Object 43 (vtable 0x4b4cc4, FUN_0042f440), room 0x2b. */
 class Object43 : public RoomScript {
 public:
-	Object43(EmuObject *obj) : RoomScript(obj) {}
+	Object43(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		_now = currentTime();
 		if (currentRoom() == 0x2b)
@@ -2169,7 +2168,7 @@ private:
 /** Object 44 (vtable 0x4b4ca4, FUN_004302e0), room 0x2c. */
 class Object44 : public RoomScript {
 public:
-	Object44(EmuObject *obj) : RoomScript(obj) {}
+	Object44(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x2c)
 			handleRoom(msg);
@@ -2288,7 +2287,7 @@ private:
 /** Object 45 (vtable 0x4b4c84, FUN_0043e670), room 0x2d. */
 class Object45 : public RoomScript {
 public:
-	Object45(EmuObject *obj) : RoomScript(obj) {}
+	Object45(GameObject *obj) : RoomScript(obj) {}
 	void handle(Message &msg) override {
 		if (currentRoom() == 0x2d)
 			handleRoom(msg);

@@ -47,7 +47,7 @@ enum {
  */
 class ObjectScript : public Script {
 public:
-	ObjectScript(EmuObject *obj) : Script(obj) {}
+	ObjectScript(GameObject *obj) : Script(obj) {}
 	void handle(Message &msg) override;
 };
 
@@ -60,7 +60,7 @@ public:
  */
 class ItemScript : public ObjectScript {
 public:
-	ItemScript(EmuObject *obj) : ObjectScript(obj) {}
+	ItemScript(GameObject *obj) : ObjectScript(obj) {}
 	bool accepts(Message &msg) override;
 	void handle(Message &msg) override;
 };
@@ -71,7 +71,7 @@ public:
  */
 class Object99 : public ItemScript {
 public:
-	Object99(EmuObject *obj) : ItemScript(obj) {}
+	Object99(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override;
 
 private:
@@ -81,7 +81,7 @@ private:
 	}
 };
 
-typedef Script *(*ScriptFactory)(EmuObject *obj);
+typedef Script *(*ScriptFactory)(GameObject *obj);
 
 /** One entry per ported class, by vtable address. */
 struct ScriptEntry {
@@ -90,7 +90,7 @@ struct ScriptEntry {
 };
 
 #define IVANOFF_SCRIPT(name) \
-	Script *create##name(EmuObject *obj)
+	Script *create##name(GameObject *obj)
 
 } // End of namespace Ivanoff
 

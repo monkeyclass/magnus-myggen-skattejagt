@@ -25,8 +25,9 @@
 
 #include "common/hashmap.h"
 
-#include "ivanoff/machine.h"
 #include "ivanoff/sprite.h"
+#include "ivanoff/files.h"
+#include "ivanoff/ivanoff.h"
 #include "ivanoff/scripts/scripts.h"
 
 namespace Ivanoff {
@@ -63,7 +64,7 @@ bool endsWithBackslash(const Common::String &s) {
  */
 class GameSettings {
 public:
-	GameSettings(Machine &m, uint32) : _m(m) {}
+	GameSettings() : _m(*g_engine->_files) {}
 
 	/** FUN_004749b0 (GetPrivateProfileIntA) */
 	int32 getInt(const Common::String &key, int32 def) {
@@ -87,7 +88,7 @@ public:
 	Common::String gameRegString(const Common::String &value) {
 		Common::String name = value;
 		name.toLowercase();
-		return _m.registryValue("80000002\\software\\ivanoff interactive\\mm2\\" + name);
+		return _m.registryValue(name);
 	}
 
 	/** FUN_00474650: the folder of the save games. */
@@ -98,7 +99,7 @@ public:
 private:
 	static const char *const kDir;
 	static const char *const kFile;
-	Machine &_m;
+	GameFiles &_m;
 };
 
 const char *const GameSettings::kDir = "C:\\MM2\\appdata\\";
@@ -115,16 +116,14 @@ const char *const GameSettings::kFile = "C:\\MM2\\appdata\\settings.dat";
  */
 class BatchAScript : public Script {
 public:
-	BatchAScript(EmuObject *obj) : Script(obj) {}
+	BatchAScript(GameObject *obj) : Script(obj) {}
 
 	bool accepts(Message &msg) override {
 		// Object4b51a4_accepts (FUN_004554f0): takes everything.
-		HeapMessage block(machine());
 		return true;
 	}
 
 	void handle(Message &msg) override {
-		HeapMessage block(machine());
 		handleMessage(msg);
 	}
 
@@ -133,19 +132,11 @@ protected:
 
 	/** The original makes the timer's message in the heap (FUN_00476bc0), the engine frees it. */
 	void startTimer(uint16 timerId, int32 ms, uint16 target, uint16 msg, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0) {
-		HeapMessage block(machine());
 		Script::startTimer(timerId, ms, target, msg, p1, p2, p3);
 	}
 
-	class HeapMessage {
-	public:
-		HeapMessage(Machine &m) : _m(m), _addr(0) {}
-	private:
-		Machine &_m;
-		uint32 _addr;
-	};
 
-	GameSettings settings() { return GameSettings(machine(), global32(kGlobSettings)); }
+	GameSettings settings() { return GameSettings(); }
 
 	/** The object's +0x18 field: the key events it receives. */
 
@@ -190,7 +181,7 @@ protected:
  */
 class Object8 : public BatchAScript {
 public:
-	Object8(EmuObject *obj) : BatchAScript(obj) {}
+	Object8(GameObject *obj) : BatchAScript(obj) {}
 
 	void handleMessage(Message &msg) override {
 		switch (msg.msg) {
@@ -479,7 +470,7 @@ uint32 slotPos(int32 slot) {
  */
 class Object14 : public BatchAScript {
 public:
-	Object14(EmuObject *obj) : BatchAScript(obj) {}
+	Object14(GameObject *obj) : BatchAScript(obj) {}
 
 	void handleMessage(Message &msg) override {
 		switch (msg.msg) {
@@ -667,7 +658,7 @@ private:
 
 	/** OpenFile(OF_EXIST) */
 	bool fileExists(const Common::String &path) {
-		return machine().fileExists(path);
+		return g_engine->_files->exists(path);
 	}
 
 	void load(int32 slot) {
@@ -781,7 +772,7 @@ private:
  */
 class Object17 : public BatchAScript {
 public:
-	Object17(EmuObject *obj) : BatchAScript(obj) {}
+	Object17(GameObject *obj) : BatchAScript(obj) {}
 
 	void handleMessage(Message &msg) override {
 		switch (msg.msg) {

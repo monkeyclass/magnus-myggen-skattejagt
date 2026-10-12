@@ -23,7 +23,7 @@
 #include "common/system.h"
 
 #include "ivanoff/ivanoff.h"
-#include "ivanoff/machine.h"
+#include "ivanoff/script.h"
 #include "ivanoff/sprite.h"
 #include "ivanoff/world.h"
 
@@ -32,6 +32,7 @@ namespace Ivanoff {
 // --- GameObject ---
 
 GameObject::~GameObject() {
+	delete _script;
 	for (uint i = 0; i < _children.size(); i++)
 		delete _children[i];
 }
@@ -69,6 +70,15 @@ void GameObject::startTimer(uint16 timerId, int32 ms, uint16 target, uint16 msg,
 void GameObject::stopTimer(uint16 timerId) {
 	if (timerId != 0)
 		g_engine->_world->stopTimer(this, timerId);
+}
+
+bool GameObject::accepts(Message &msg) {
+	return _script && _script->accepts(msg);
+}
+
+void GameObject::handle(Message &msg) {
+	if (_script)
+		_script->handle(msg);
 }
 
 void GameObject::setCursor(uint32 cursor) {
@@ -171,23 +181,16 @@ int32 World::deliverCommand(GameObject *from, Message &msg) {
 		msg.target = from ? from->getId() : kBroadcast;
 	msg.mode = 2;
 	if (gDebugLevel >= 4) {
-		// Text commands pass strings: print them, not their (varying) addresses.
-		Emu::Memory &mem = g_engine->_machine->mem();
-		if (msg.cmd == 9 && (msg.trigger || (msg.p2 && mem.isMapped(msg.p2)))) {
-			// Frame triggers pass a message.
-			Message t;
-			if (msg.trigger)
-				t = *msg.trigger;
-			else
-				g_engine->_machine->readMessage(msg.p2, t);
+		// Frame triggers and text commands: print the message and the text.
+		if (msg.cmd == 9 && msg.trigger) {
+			const Message &t = *msg.trigger;
 			debug(4, "cmd %d -> %d.%d (%d, [%d %d %d %d (%d, %d, %d)], %d)", msg.cmd, msg.target, msg.msg, msg.p1,
 			      t.target, t.mode, t.cmd, t.msg, t.p1, t.p2, t.p3, msg.p3);
 		} else if ((msg.cmd == 0xd || msg.cmd == 0xf) && msg.text) {
 			debug(4, "cmd %d -> %d.%d (\"%s\", %d, %d)", msg.cmd, msg.target, msg.msg, Common::String(msg.text).substr(0, 255).c_str(), msg.p2, msg.p3);
-		} else if ((msg.cmd == 0xd || msg.cmd == 0xf) && msg.p1 && mem.isMapped(msg.p1))
-			debug(4, "cmd %d -> %d.%d (\"%s\", %d, %d)", msg.cmd, msg.target, msg.msg, mem.readString(msg.p1, 256).c_str(), msg.p2, msg.p3);
-		else
+		} else {
 			debug(4, "cmd %d -> %d.%d (%d, %d, %d)", msg.cmd, msg.target, msg.msg, msg.p1, msg.p2, msg.p3);
+		}
 	}
 
 	if (msg.target == kBroadcast) {

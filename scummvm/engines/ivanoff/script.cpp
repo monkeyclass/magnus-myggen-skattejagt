@@ -23,29 +23,16 @@
 #include "common/textconsole.h"
 
 #include "ivanoff/ivanoff.h"
-#include "ivanoff/machine.h"
+#include "ivanoff/files.h"
 #include "ivanoff/script.h"
 #include "ivanoff/sprite.h"
 
 namespace Ivanoff {
 
-enum {
-	kVarLookup = 0x477050,
-	kVarLookupOf = 0x477060,
-	kCStringDtor = 0x49fec5
-};
-
 // --- Script ---
-
-Script::Script(EmuObject *obj) : _obj(obj), _machine(g_engine->_machine) {
-}
 
 uint16 Script::getId() const {
 	return _obj->getId();
-}
-
-uint32 Script::self() const {
-	return _obj->getAddr();
 }
 
 int32 Script::send(uint16 target, uint16 msg, int32 p1, int32 p2, int32 p3) {
@@ -113,11 +100,11 @@ void Script::unloadChildren() {
 }
 
 bool Script::saveGame(const Common::String &file) {
-	return _machine->saveWorld(file, 0x10100);
+	return g_engine->_files->saveWorld(file, 0x10100);
 }
 
 bool Script::loadGame(const Common::String &file) {
-	return _machine->loadWorld(file, 0x10100);
+	return g_engine->_files->loadWorld(file, 0x10100);
 }
 
 void Script::quitGame() {
@@ -138,7 +125,7 @@ VarRef Script::var(uint16 id, uint16 objectId) {
 	// the original would read through a null object.
 	GameObject *obj = g_engine->_world->get(objectId);
 	if (!obj && ConfMan.hasKey("fuzz_dict"))
-		obj = _machine->kernel();
+		obj = g_engine->_world->get(kEngineObject);
 	if (!obj) {
 		g_engine->debugFault("unmapped address");
 		error("Script: variable %d of missing object %d", id, objectId);
@@ -179,25 +166,6 @@ Child *Script::getChild(uint16 id, uint16 objectId) {
 	if (!obj)
 		obj = _obj;
 	return obj->getChild(id);
-}
-
-void Script::callHandler(uint32 addr, Message &msg) {
-	uint32 m = _machine->allocMessage(msg);
-	_machine->cpu().call(addr, self(), m);
-	_machine->readMessage(m, msg);
-	_machine->mem().free(m);
-}
-
-bool Script::callAccepts(uint32 addr, Message &msg) {
-	uint32 m = _machine->allocMessage(msg);
-	bool ok = _machine->cpu().call(addr, self(), m) != 0;
-	_machine->readMessage(m, msg);
-	_machine->mem().free(m);
-	return ok;
-}
-
-uint32 Script::callGame(uint32 addr, uint32 nargs, const uint32 *args) {
-	return _machine->cpu().call(addr, self(), nargs, args);
 }
 
 int32 Script::global32(uint32 addr) const {

@@ -22,7 +22,6 @@
 // Batch b: the speaking characters (objects 15-21) and two puzzles of
 // rooms 0x17 and 0x26 (objects 60 and 61).
 
-#include "ivanoff/machine.h"
 #include "ivanoff/scripts/scripts.h"
 
 namespace Ivanoff {
@@ -41,16 +40,14 @@ enum {
  */
 class BatchBScript : public ObjectScript {
 public:
-	BatchBScript(EmuObject *obj) : ObjectScript(obj) {}
+	BatchBScript(GameObject *obj) : ObjectScript(obj) {}
 
 	bool accepts(Message &msg) override {
 		// FUN_0045da60 / FUN_0041c2c0 -> FUN_004554f0: takes everything.
-		HeapBlock block(machine());
 		return true;
 	}
 
 	void handle(Message &msg) override {
-		HeapBlock block(machine());
 		handleMessage(msg);
 	}
 
@@ -58,13 +55,6 @@ protected:
 	virtual void handleMessage(Message &msg) = 0;
 
 private:
-	class HeapBlock {
-	public:
-		HeapBlock(Machine &m) : _m(m), _addr(0) {}
-	private:
-		Machine &_m;
-		uint32 _addr;
-	};
 };
 
 /**
@@ -80,7 +70,7 @@ private:
  */
 class SpeakerScript : public BatchBScript {
 public:
-	SpeakerScript(EmuObject *obj) : BatchBScript(obj) {}
+	SpeakerScript(GameObject *obj) : BatchBScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
@@ -136,7 +126,7 @@ void SpeakerScript::handleMessage(Message &msg) {
 /** Object 15 (vtable 0x4b5044, FUN_0043a0a0), Magnus [unverified]: his animations and voice in each room. */
 class Object15 : public SpeakerScript {
 public:
-	Object15(EmuObject *obj) : SpeakerScript(obj) {}
+	Object15(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
@@ -1057,7 +1047,7 @@ void Object15::handleMessage(Message &msg) {
 /** Object 16 (vtable 0x4b5024, FUN_00446fd0), Myggen [unverified]: his animations and voice in each room. */
 class Object16 : public SpeakerScript {
 public:
-	Object16(EmuObject *obj) : SpeakerScript(obj) {}
+	Object16(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
@@ -2056,7 +2046,7 @@ void Object16::handleMessage(Message &msg) {
  */
 class Object18 : public SpeakerScript {
 public:
-	Object18(EmuObject *obj) : SpeakerScript(obj) {}
+	Object18(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -2138,7 +2128,7 @@ void Object18::handleMessage(Message &msg) {
 /** Object 19 (vtable 0x4b4fc4, FUN_00406940), a character of room 0x18 [unverified]. */
 class Object19 : public SpeakerScript {
 public:
-	Object19(EmuObject *obj) : SpeakerScript(obj) {}
+	Object19(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
@@ -2241,7 +2231,7 @@ void Object19::handleMessage(Message &msg) {
 /** Object 20 (vtable 0x4b4fa4, FUN_00405510), a character of room 0x1f [unverified]. */
 class Object20 : public SpeakerScript {
 public:
-	Object20(EmuObject *obj) : SpeakerScript(obj) {}
+	Object20(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 };
 
@@ -2304,7 +2294,7 @@ void Object20::handleMessage(Message &msg) {
 /** Object 21 (vtable 0x4b4f84, FUN_0045da70), a character of rooms 0x38 and 0x3b [unverified]. */
 class Object21 : public SpeakerScript {
 public:
-	Object21(EmuObject *obj) : SpeakerScript(obj) {}
+	Object21(GameObject *obj) : SpeakerScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -2494,7 +2484,7 @@ void Object21::handleRoom3b(Message &msg) {
  */
 class Object60 : public BatchBScript {
 public:
-	Object60(EmuObject *obj) : BatchBScript(obj) {}
+	Object60(GameObject *obj) : BatchBScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -2663,7 +2653,7 @@ void Object60::handleMessage(Message &msg) {
  */
 class Object61 : public BatchBScript {
 public:
-	Object61(EmuObject *obj) : BatchBScript(obj) {}
+	Object61(GameObject *obj) : BatchBScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:

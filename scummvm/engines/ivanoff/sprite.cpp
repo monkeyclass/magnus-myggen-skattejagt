@@ -32,7 +32,7 @@
 #include "video/flic_decoder.h"
 
 #include "ivanoff/ivanoff.h"
-#include "ivanoff/machine.h"
+#include "ivanoff/files.h"
 #include "ivanoff/sprite.h"
 
 namespace Ivanoff {
@@ -108,13 +108,11 @@ void Child::handleCommand(Message &msg) {
 
 Child *Child::setAltResource(uint16 res) {
 	_altResource = res;
-	if (_addr)
-		g_engine->_machine->mem().w16(_addr + 0x50, res);
 	return this;
 }
 
 uint16 Child::resourceId() const {
-	uint16 alt = _addr ? g_engine->_machine->mem().r16(_addr + 0x50) : _altResource;
+	uint16 alt = _altResource;
 	return alt ? alt : _id;
 }
 
@@ -367,14 +365,6 @@ Bitmap::~Bitmap() {
 
 void Bitmap::handleCommand(Message &msg) {
 	// FUN_00477bd0
-	if (msg.cmd == 0x35) {
-		Common::Array<byte> buf(msg.p2);
-		if (msg.p2 > 0)
-			g_engine->_machine->mem().read(msg.p1, &buf[0], msg.p2);
-		Common::MemoryReadStream stream(buf.data(), buf.size());
-		loadFromMemory(stream);
-		return;
-	}
 	Sprite::handleCommand(msg);
 }
 
@@ -463,11 +453,6 @@ void Anim::handleCommand(Message &msg) {
 		// FUN_00481b50: p2 is a message the game allocated for us.
 		if (msg.trigger) {
 			setFrameTrigger(msg.p1, msg.trigger);
-		} else if (msg.p2) {
-			Message t;
-			g_engine->_machine->readMessage(msg.p2, t);
-			g_engine->_machine->mem().free(msg.p2);
-			setFrameTrigger(msg.p1, &t);
 		} else {
 			setFrameTrigger(msg.p1, nullptr);
 		}
@@ -1026,15 +1011,6 @@ void TextResource::handleCommand(Message &msg) {
 	case kCmdStop:
 		stop();
 		break;
-	case 0x2f: {
-		// Copy the text to a buffer of the game (FUN_00479780).
-		load();
-		Common::String t = _text;
-		if (msg.p2 != -1 && (int32)t.size() > msg.p2)
-			t = Common::String(t.c_str(), msg.p2);
-		g_engine->_machine->mem().writeString(msg.p1, t);
-		break;
-	}
 	default:
 		Child::handleCommand(msg);
 		break;
@@ -1107,8 +1083,6 @@ void TextSprite::handleCommand(Message &msg) {
 		// Font: name, size (tenths of a point), style; 0 / -1 keep the current one.
 		if (msg.text)
 			_font = msg.text;
-		else if (msg.p1)
-			_font = g_engine->_machine->mem().readString(msg.p1);
 		if (msg.p2)
 			_size = msg.p2;
 		if (msg.p3 != -1)
@@ -1122,8 +1096,6 @@ void TextSprite::handleCommand(Message &msg) {
 	case 0xf:
 		if (msg.text)
 			setText(msg.text);
-		else if (msg.p1)
-			setText(g_engine->_machine->mem().readString(msg.p1));
 		break;
 	case 0x10:
 		// FUN_0047a4b0: colours, palette entries 10-245 (background < 0: none).
@@ -1317,7 +1289,7 @@ void VideoSprite::stop() {
 Video::VideoDecoder *VideoSprite::openDecoder() {
 	// FUN_0047b100: a Cinepak AVI, dithered to the screen palette like the
 	// original's 8-bit ICDecompress output.
-	Common::String path = g_engine->_machine->gamePath(_file);
+	Common::String path = g_engine->_files->gamePath(_file);
 	Common::File *f = new Common::File();
 	if (path.empty() || !f->open(Common::Path(path, '/'))) {
 		warning("VideoSprite %d: can't open %s", _id, _file.c_str());

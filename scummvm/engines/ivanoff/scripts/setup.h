@@ -27,7 +27,7 @@
 
 namespace Ivanoff {
 
-class EmuObject;
+class GameObject;
 class Machine;
 
 /**
@@ -36,7 +36,7 @@ class Machine;
  */
 class SetupBuilder {
 public:
-	SetupBuilder(Machine *m) : _machine(m) {}
+	SetupBuilder() {}
 
 	/** FUN_00476910 and the class's constructor. */
 	void object(uint16 id, uint32 vtable);
@@ -81,8 +81,7 @@ public:
 	void frameTrigger(Child *c, int32 frame);
 
 private:
-	Machine *_machine;
-	EmuObject *_obj = nullptr;
+	GameObject *_obj = nullptr;
 	Child *_last = nullptr;
 };
 

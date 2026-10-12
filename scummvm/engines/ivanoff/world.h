@@ -35,13 +35,15 @@ namespace Ivanoff {
 class Child;
 class GameObject;
 class IvanoffEngine;
+class Script;
 
 /** Object IDs the engine knows about. */
 enum {
 	kBroadcast = 0,      ///< target 0: every top-level object
 	kSelf = 0xffff,      ///< target 0xffff: the sending object
 	kGameState = 0x11,   ///< object 17: current room, clock, navigation
-	kSpeech = 0x12       ///< object 18: subtitles and voice
+	kSpeech = 0x12,      ///< object 18: subtitles and voice
+	kEngineObject = 0xfffe ///< the engine's own object: global sprites (cursors)
 };
 
 /** Messages and events (Message::msg). */
@@ -146,8 +148,8 @@ struct Message {
 
 /**
  * A top-level object: a room, a sub-scene or a global controller.
- * Mirrors the original class with vtable slots 3-6:
- * createVars, createChildren, accepts, handle.
+ * The original classes' vtable slots 3 and 4 (variables and children) are
+ * scripts/setup.cpp; slots 5 and 6 (accepts, handle) are its Script.
  */
 class GameObject {
 public:
@@ -156,14 +158,15 @@ public:
 
 	uint16 getId() const { return _id; }
 
-	/** Slot 3: create the object's variables. */
-	virtual void createVars() {}
-	/** Slot 4: create the object's children. */
-	virtual void createChildren() {}
 	/** Slot 5: does the object accept this message? */
-	virtual bool accepts(Message &msg) { return true; }
+	bool accepts(Message &msg);
 	/** Slot 6: handle a message. This is where the game logic lives. */
-	virtual void handle(Message &msg) {}
+	void handle(Message &msg);
+
+	/** The game logic (slots 5 and 6) of the object's class; nullptr for the engine's object. */
+	Script *_script = nullptr;
+	/** The original class (its vtable address). */
+	uint32 _class = 0;
 
 	// --- the original engine's helper API (names after the original functions) ---
 
@@ -202,7 +205,7 @@ public:
 	void dispatchChildCommand(Message &msg);
 
 	/** +0x18: which key events the object receives (FUN_0047bde0). */
-	virtual uint32 eventMask() { return _flags18; }
+	uint32 eventMask() const { return _flags18; }
 	uint32 _flags18 = 0;
 
 protected:

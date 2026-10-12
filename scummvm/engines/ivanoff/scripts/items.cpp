@@ -28,7 +28,7 @@ namespace Ivanoff {
 /** Object 72 (vtable 0x4b4944, FUN_0040dd80). */
 class Object72 : public ItemScript {
 public:
-	Object72(EmuObject *obj) : ItemScript(obj) {}
+	Object72(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		if (msg.msg == 0x3b)
 			msg.result = 1;
@@ -42,7 +42,7 @@ public:
 /** Object 67 (vtable 0x4b49e4, FUN_00405c60). */
 class Object67 : public ItemScript {
 public:
-	Object67(EmuObject *obj) : ItemScript(obj) {}
+	Object67(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		switch (msg.msg) {
 		case kMsgLeave:
@@ -74,7 +74,7 @@ public:
 /** Object 76 (vtable 0x4b48c4, FUN_00413a10). */
 class Object76 : public ItemScript {
 public:
-	Object76(EmuObject *obj) : ItemScript(obj) {}
+	Object76(GameObject *obj) : ItemScript(obj) {}
 	void handle(Message &msg) override {
 		switch (msg.msg) {
 		case kMsgLeave:
@@ -172,7 +172,7 @@ void Object99::handle(Message &msg) {
 /** Object 100 (vtable 0x4b45c4, FUN_00452b50), a kind of object 99. */
 class Object100 : public Object99 {
 public:
-	Object100(EmuObject *obj) : Object99(obj) {}
+	Object100(GameObject *obj) : Object99(obj) {}
 	void handle(Message &msg) override {
 		if (msg.msg == kMsgLeave && msg.p1 == 0x24) {
 			cmd(kSelf, kCmdUnload, 0x34b);

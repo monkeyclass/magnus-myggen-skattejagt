@@ -21,7 +21,6 @@
 
 // Batch d: large rooms (objects 22, 26, 40, 42).
 
-#include "ivanoff/machine.h"
 #include "ivanoff/scripts/scripts.h"
 
 namespace Ivanoff {
@@ -38,35 +37,21 @@ enum {
  */
 class RoomScript : public ObjectScript {
 public:
-	RoomScript(EmuObject *obj) : ObjectScript(obj) {}
+	RoomScript(GameObject *obj) : ObjectScript(obj) {}
 
 	bool accepts(Message &msg) override {
-		HeapBlock block(machine());
 		if (var(kVarDragMode, kGameState).get() == 1 && msg.msg == kMsgClick)
 			return false;
 		return true;
 	}
 
 	void handle(Message &msg) override {
-		HeapBlock block(machine());
 		handleMessage(msg);
 	}
 
 protected:
 	virtual void handleMessage(Message &msg) = 0;
 
-	/**
-	 * The original handlers keep a Message (0x2c bytes) on the heap while
-	 * they run; holding a block of that size keeps the heap addresses of the
-	 * other objects' allocations the same.
-	 */
-	class HeapBlock {
-	public:
-		HeapBlock(Machine &m) : _m(m), _addr(0) {}
-	private:
-		Machine &_m;
-		uint32 _addr;
-	};
 
 	/**
 	 * Sets the text of a text sprite to the text of a variable (slot 0x3c,
@@ -89,7 +74,7 @@ protected:
  */
 class Object22 : public RoomScript {
 public:
-	Object22(EmuObject *obj) : RoomScript(obj) {}
+	Object22(GameObject *obj) : RoomScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -416,7 +401,7 @@ void Object22::handleMessage(Message &msg) {
  */
 class Object26 : public RoomScript {
 public:
-	Object26(EmuObject *obj) : RoomScript(obj) {}
+	Object26(GameObject *obj) : RoomScript(obj) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -728,7 +713,7 @@ void Object26::handleMessage(Message &msg) {
  */
 class MazeRoom : public RoomScript {
 public:
-	MazeRoom(EmuObject *obj, int32 room, int32 start, int32 z, uint16 exitRoom) :
+	MazeRoom(GameObject *obj, int32 room, int32 start, int32 z, uint16 exitRoom) :
 		RoomScript(obj), _room(room), _start(start), _z(z), _exitRoom(exitRoom) {}
 
 protected:
@@ -842,7 +827,7 @@ protected:
 /** Object 40 (vtable 0x4b4d24, FUN_00428f40): room 0x28, a maze. */
 class Object40 : public MazeRoom {
 public:
-	Object40(EmuObject *obj) : MazeRoom(obj, 0x28, 0xfe41, 0x28, 0x2a) {}
+	Object40(GameObject *obj) : MazeRoom(obj, 0x28, 0xfe41, 0x28, 0x2a) {}
 	void handleMessage(Message &msg) override;
 
 private:
@@ -1080,7 +1065,7 @@ base:
 /** Object 42 (vtable 0x4b4ce4, FUN_0042ce50): room 0x2a, the second maze. */
 class Object42 : public MazeRoom {
 public:
-	Object42(EmuObject *obj) : MazeRoom(obj, 0x2a, 0xfe61, 0x2a, 0x38) {}
+	Object42(GameObject *obj) : MazeRoom(obj, 0x2a, 0xfe61, 0x2a, 0x38) {}
 	void handleMessage(Message &msg) override;
 
 private:

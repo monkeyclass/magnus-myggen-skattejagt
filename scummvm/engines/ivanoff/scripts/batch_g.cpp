@@ -21,7 +21,6 @@
 
 // Batch g: the rooms 49-62 and the items 63 and 64.
 
-#include "ivanoff/machine.h"
 #include "ivanoff/scripts/scripts.h"
 
 namespace Ivanoff {
@@ -59,23 +58,11 @@ const int32 kPlayA = (int32)0xffff3fff;
 const int32 kPlayB = (int32)0xc0003fff;
 const int32 kPlayOnce = (int32)0x8000c001;
 
-/**
- * The original handlers run with a Message (0x2c bytes) on the heap;
- * holding a block of that size keeps the heap addresses of later
- * allocations the same.
- */
-class HeapBlock {
-public:
-	HeapBlock(Machine &m) : _m(m), _addr(0) {}
-private:
-	Machine &_m;
-	uint32 _addr;
-};
 
 /** Accepts of the items (FUN_004209d0 -> FUN_00423a60): no clicks while dragging. */
 class ItemAccepts : public ObjectScript {
 public:
-	ItemAccepts(EmuObject *obj) : ObjectScript(obj) {}
+	ItemAccepts(GameObject *obj) : ObjectScript(obj) {}
 	bool accepts(Message &msg) override {
 		if (var(kVarDragMode, kGameState).get() == 1 && msg.msg == kMsgClick)
 			return false;
@@ -87,15 +74,13 @@ public:
 template<class Base>
 class HeldScript : public Base {
 public:
-	HeldScript(EmuObject *obj) : Base(obj) {}
+	HeldScript(GameObject *obj) : Base(obj) {}
 
 	bool accepts(Message &msg) override {
-		HeapBlock block(this->machine());
 		return Base::accepts(msg);
 	}
 
 	void handle(Message &msg) override {
-		HeapBlock block(this->machine());
 		handleMessage(msg);
 	}
 
@@ -140,7 +125,7 @@ typedef HeldScript<ItemScript> HeldItem;
 
 class Object49 : public RoomScript {
 public:
-	Object49(EmuObject *obj) : RoomScript(obj) {}
+	Object49(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -289,7 +274,7 @@ const Object49::Door Object49::kDoors[6] = {
 
 class Object50 : public RoomScript {
 public:
-	Object50(EmuObject *obj) : RoomScript(obj) {}
+	Object50(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -392,7 +377,7 @@ private:
 
 class Object51 : public RoomScript {
 public:
-	Object51(EmuObject *obj) : RoomScript(obj) {}
+	Object51(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -559,7 +544,7 @@ private:
 
 class Object52 : public RoomScript {
 public:
-	Object52(EmuObject *obj) : RoomScript(obj) {}
+	Object52(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -783,7 +768,7 @@ private:
 
 class Object53 : public RoomScript {
 public:
-	Object53(EmuObject *obj) : RoomScript(obj) {}
+	Object53(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -968,7 +953,7 @@ private:
 
 class Object54 : public RoomScript {
 public:
-	Object54(EmuObject *obj) : RoomScript(obj) {}
+	Object54(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1125,7 +1110,7 @@ private:
 
 class Object56 : public RoomScript {
 public:
-	Object56(EmuObject *obj) : RoomScript(obj) {}
+	Object56(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1249,7 +1234,7 @@ private:
 
 class Object57 : public RoomScript {
 public:
-	Object57(EmuObject *obj) : RoomScript(obj) {}
+	Object57(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1444,7 +1429,7 @@ private:
 
 class Object58 : public RoomScript {
 public:
-	Object58(EmuObject *obj) : RoomScript(obj) {}
+	Object58(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1507,7 +1492,7 @@ protected:
 
 class Object59 : public RoomScript {
 public:
-	Object59(EmuObject *obj) : RoomScript(obj) {}
+	Object59(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1726,7 +1711,7 @@ private:
 
 class Object62 : public RoomScript {
 public:
-	Object62(EmuObject *obj) : RoomScript(obj) {}
+	Object62(GameObject *obj) : RoomScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1793,7 +1778,7 @@ private:
 
 class Object63 : public HeldItem {
 public:
-	Object63(EmuObject *obj) : HeldItem(obj) {}
+	Object63(GameObject *obj) : HeldItem(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1847,7 +1832,7 @@ protected:
 
 class Object64 : public HeldItem {
 public:
-	Object64(EmuObject *obj) : HeldItem(obj) {}
+	Object64(GameObject *obj) : HeldItem(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {

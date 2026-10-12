@@ -42,7 +42,8 @@
 #include "image/png.h"
 
 #include "ivanoff/ivanoff.h"
-#include "ivanoff/machine.h"
+#include "ivanoff/files.h"
+#include "ivanoff/scripts/setup.h"
 #include "ivanoff/sprite.h"
 #include "ivanoff/world.h"
 
@@ -80,7 +81,7 @@ IvanoffEngine::IvanoffEngine(OSystem *syst, const ADGameDescription *gameDesc) :
 
 IvanoffEngine::~IvanoffEngine() {
 	delete _world;
-	delete _machine;
+	delete _files;
 	for (uint i = 0; i < _cursorGroups.size(); i++)
 		delete _cursorGroups[i];
 	delete _defaultCursor;
@@ -118,12 +119,13 @@ Common::Error IvanoffEngine::run() {
 	loadCursors("mm2run.exe");
 
 	_world = new World(this);
-	_machine = new Machine();
-	if (!_machine->load("mm2run.exe"))
-		return Common::Error(Common::kNoGameDataFoundError, "mm2run.exe");
-	_machine->runInitializers();
-	_machine->createObjects();
-	_machine->attachScripts();
+	_files = new GameFiles();
+
+	// The engine's own object, owner of the global sprites (cursors).
+	_world->add(new GameObject(kEngineObject));
+	// FUN_0043f760: the game's objects, their variables and children.
+	SetupBuilder setup;
+	createObjects(setup);
 
 	// The application object starts the game by sending message 1 to
 	// object 17 (FUN_0047b5d0: start object 0x11).
@@ -135,10 +137,6 @@ Common::Error IvanoffEngine::run() {
 
 	if (ConfMan.hasKey("virtual_clock"))
 		_virtualStep = MAX(ConfMan.getInt("virtual_clock"), 0);
-	if (ConfMan.hasKey("coverage")) {
-		_machine->cpu()._coverageBase = 0x401000;
-		_machine->cpu()._coverage.resize(0x75000);
-	}
 
 	while (!shouldQuit()) {
 		Common::Event e;
@@ -170,12 +168,6 @@ Common::Error IvanoffEngine::run() {
 		if (_virtualStep)
 			_virtualTime += _virtualStep;
 		uint32 now = getMillis();
-		if (now - _statsTime >= 5000) {
-			uint64 n = _machine->cpu()._instructions;
-			debug(1, "Interpreter: %u instructions/s", (uint)((n - _statsInstructions) * 1000 / MAX<uint32>(now - _statsTime, 1)));
-			_statsInstructions = n;
-			_statsTime = now;
-		}
 		runDebugEvents(now);
 		_world->update();
 		updateChildren(now);
@@ -184,7 +176,6 @@ Common::Error IvanoffEngine::run() {
 		_system->delayMillis(_virtualStep ? 0 : 10);
 	}
 
-	writeCoverage();
 	return Common::kNoError;
 }
 
@@ -192,24 +183,9 @@ void IvanoffEngine::debugFault(const char *what) {
 	if (!ConfMan.hasKey("debug_events"))
 		return;
 	debug("FAULT: %s", what);
-	writeCoverage();
 	fflush(stdout);
 	fflush(stderr);
 	exit(0);
-}
-
-// Debugging aid: "coverage=<file>" writes the addresses of the executed
-// instructions of the game code, one per line.
-void IvanoffEngine::writeCoverage() {
-	Emu::CPU &cpu = _machine->cpu();
-	if (!ConfMan.hasKey("coverage") || cpu._coverage.empty())
-		return;
-	Common::DumpFile f;
-	if (!f.open(Common::Path(ConfMan.get("coverage"))))
-		return;
-	for (uint i = 0; i < cpu._coverage.size(); i++)
-		if (cpu._coverage[i])
-			f.writeString(Common::String::format("%x\n", cpu._coverageBase + i));
 }
 
 // Debugging aid: "fuzz_dict=<file>" lists, per class of object,
@@ -226,9 +202,8 @@ void IvanoffEngine::loadFuzzDictionary() {
 	Common::HashMap<uint32, Common::Array<uint16> > byVtable;
 	const Common::Array<GameObject *> &objs = _world->getObjects();
 	for (uint i = 0; i < objs.size(); i++) {
-		EmuObject *o = (EmuObject *)objs[i];
-		if (!o->_native)
-			byVtable[o->getVtable()].push_back(o->getId());
+		if (objs[i]->_script)
+			byVtable[objs[i]->_class].push_back(objs[i]->getId());
 	}
 	while (!f.eos()) {
 		Common::String line = f.readLine();
@@ -275,11 +250,8 @@ void IvanoffEngine::runFuzz() {
 		GameObject *o = _world->get(obj);
 		if (!o)
 			return;
-		Emu::CPU &cpu = _machine->cpu();
-		Emu::Memory &mem = _machine->mem();
-		uint32 var = cpu.call(0x477050, ((EmuObject *)o)->getAddr(), v & 0xffff);
 		debug(1, "fuzz: var %d.%d = %d", obj, v & 0xffff, value);
-		cpu.call(mem.r32(mem.r32(var) + 0x2c), var, (uint32)value);
+		o->var(v & 0xffff)->set(value);
 		return;
 	}
 	int32 p[3];
@@ -395,7 +367,7 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 			onKey(Common::KEYCODE_ESCAPE, 27, false);
 		} else if (!strcmp(kind, "save")) {
 			// Saves to SavedGame<x>.m2s with version y.
-			_machine->saveWorld(Common::String::format("C:\\MM2\\appdata\\SavedGame%u.m2s", x), y);
+			_files->saveWorld(Common::String::format("C:\\MM2\\appdata\\SavedGame%u.m2s", x), y);
 		} else if (!strcmp(kind, "quit")) {
 			quitGame();
 		}
@@ -515,7 +487,7 @@ void IvanoffEngine::applyCursor(uint32 cursor) {
 	if (!c) {
 		// Other values name a child of the engine's input object, drawn
 		// with its top-left corner at the mouse position (FUN_0047e040).
-		GameObject *k = _machine->kernel();
+		GameObject *k = _world->get(kEngineObject);
 		Sprite *sp = k ? dynamic_cast<Sprite *>(k->getChild(cursor & 0xffff)) : nullptr;
 		if (sp) {
 			sp->load();

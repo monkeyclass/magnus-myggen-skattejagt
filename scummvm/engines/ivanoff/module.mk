@@ -2,11 +2,8 @@ MODULE := engines/ivanoff
 
 MODULE_OBJS = \
 	console.o \
-	emu/cpu.o \
-	emu/memory.o \
+	files.o \
 	ivanoff.o \
-	machine.o \
-	machine_files.o \
 	metaengine.o \
 	resources.o \
 	script.o \

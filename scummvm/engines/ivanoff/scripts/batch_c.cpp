@@ -25,7 +25,6 @@
 
 #include "common/debug.h"
 
-#include "ivanoff/machine.h"
 #include "ivanoff/scripts/scripts.h"
 
 namespace Ivanoff {
@@ -41,15 +40,13 @@ namespace Ivanoff {
  */
 class BatchCScript : public ObjectScript {
 public:
-	BatchCScript(EmuObject *obj) : ObjectScript(obj) {}
+	BatchCScript(GameObject *obj) : ObjectScript(obj) {}
 
 	bool accepts(Message &msg) override {
-		HeapBlock block(machine());
 		return acceptsMessage(msg);
 	}
 
 	void handle(Message &msg) override {
-		HeapBlock block(machine());
 		handleMessage(msg);
 	}
 
@@ -109,13 +106,6 @@ private:
 		debug(1, "Machine: SHELL32.DLL!ShellExecuteA refused");
 	}
 
-	class HeapBlock {
-	public:
-		HeapBlock(Machine &m) : _m(m), _addr(0) {}
-	private:
-		Machine &_m;
-		uint32 _addr;
-	};
 };
 
 // --- Object 2 ---
@@ -127,7 +117,7 @@ private:
  */
 class Object2 : public BatchCScript {
 public:
-	Object2(EmuObject *obj) : BatchCScript(obj) {}
+	Object2(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -433,7 +423,7 @@ private:
 /** Object 3 (vtable 0x4b5164, FUN_00418f80): the opening animation. */
 class Object3 : public BatchCScript {
 public:
-	Object3(EmuObject *obj) : BatchCScript(obj) {}
+	Object3(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -505,7 +495,7 @@ protected:
  */
 class Object4 : public BatchCScript {
 public:
-	Object4(EmuObject *obj) : BatchCScript(obj) {}
+	Object4(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -602,7 +592,7 @@ private:
  */
 class Object33 : public BatchCScript {
 public:
-	Object33(EmuObject *obj) : BatchCScript(obj) {}
+	Object33(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -842,7 +832,7 @@ private:
  */
 class Object47 : public BatchCScript {
 public:
-	Object47(EmuObject *obj) : BatchCScript(obj) {}
+	Object47(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	bool acceptsMessage(Message &msg) override {
@@ -1176,7 +1166,7 @@ private:
  */
 class Object48 : public BatchCScript {
 public:
-	Object48(EmuObject *obj) : BatchCScript(obj) {}
+	Object48(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	void handleMessage(Message &msg) override {
@@ -1437,7 +1427,7 @@ private:
  */
 class Object46 : public BatchCScript {
 public:
-	Object46(EmuObject *obj) : BatchCScript(obj) {}
+	Object46(GameObject *obj) : BatchCScript(obj) {}
 
 protected:
 	bool acceptsMessage(Message &msg) override {

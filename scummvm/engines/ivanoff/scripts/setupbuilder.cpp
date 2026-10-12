@@ -20,17 +20,22 @@
  */
 
 #include "ivanoff/ivanoff.h"
-#include "ivanoff/machine.h"
+#include "ivanoff/script.h"
 #include "ivanoff/scripts/setup.h"
 
 namespace Ivanoff {
 
 void SetupBuilder::object(uint16 id, uint32 vtable) {
-	_obj = _machine->newObject(id, vtable);
+	// FUN_00476910; the class gives the object its logic (scripts/registry.h).
+	_obj = new GameObject(id);
+	_obj->_class = vtable;
+	_obj->_script = createScript(_obj, vtable);
+	if (!_obj->_script)
+		warning("SetupBuilder: no logic for object %d (vtable %x)", id, vtable);
 }
 
 void SetupBuilder::registerObject() {
-	_machine->registerObject(_obj);
+	g_engine->_world->add(_obj);
 }
 
 void SetupBuilder::addInt(uint16 id, int32 value, bool save) {

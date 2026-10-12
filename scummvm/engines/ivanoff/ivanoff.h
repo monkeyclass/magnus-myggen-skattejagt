@@ -42,7 +42,7 @@ struct WinCursorGroup;
 namespace Ivanoff {
 
 class Child;
-class Machine;
+class GameFiles;
 class Sprite;
 class World;
 
@@ -73,7 +73,7 @@ public:
 
 	Resources _resources;
 	World *_world = nullptr;
-	Machine *_machine = nullptr;
+	GameFiles *_files = nullptr;
 
 	/** FUN_00477120: the cursor shown everywhere (0 = per sprite). */
 	void setGlobalCursor(uint32 cursor);
@@ -177,14 +177,11 @@ private:
 	Common::Array<FuzzEntry> _fuzz;
 	int _fuzzLeft = 0;
 	uint32 _fuzzNext = 0, _fuzzInterval = 500;
-	void writeCoverage();
 	uint32 _crawlNext = 0, _crawlInterval = 2500;
 
 	uint32 _lastSignature = 0;
 	bool _forceRedraw = true;
 
-	uint32 _statsTime = 0;
-	uint64 _statsInstructions = 0;
 
 	Common::HashMap<uint32, int32> _globals;
 

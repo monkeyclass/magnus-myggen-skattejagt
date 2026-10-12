@@ -30,8 +30,7 @@
 namespace Ivanoff {
 
 class Child;
-class EmuObject;
-class Machine;
+class GameObject;
 
 /**
  * A game variable (vars.h): a handle that is cheap to copy. Missing
@@ -83,7 +82,7 @@ private:
  */
 class Script {
 public:
-	Script(EmuObject *obj);
+	Script(GameObject *obj) : _obj(obj) {}
 	virtual ~Script() {}
 
 	/** Slot 5 (+0x14): does the object take the message? */
@@ -137,27 +136,15 @@ protected:
 	/** FUN_004770a0 / FUN_004770d0 */
 	Child *getChild(uint16 id, uint16 objectId = kSelf);
 
-	// --- transition helpers ---
-
-	/** The object's address in the interpreter's memory. */
-	uint32 self() const;
-	Machine &machine() const { return *_machine; }
-	/** Runs a not yet ported handler of the original with this message (thiscall). */
-	void callHandler(uint32 addr, Message &msg);
-	/** Runs a not yet ported accepts function of the original (thiscall). */
-	bool callAccepts(uint32 addr, Message &msg);
-	/** Runs a not yet ported function of the original with this as the object. */
-	uint32 callGame(uint32 addr, uint32 nargs = 0, const uint32 *args = nullptr);
 	/** Global variables of the original (DAT_xxxxxxxx). */
 	int32 global32(uint32 addr) const;
 	void setGlobal32(uint32 addr, int32 value);
 
-	EmuObject *_obj;
-	Machine *_machine;
+	GameObject *_obj;
 };
 
-/** The native logic of an object, or nullptr while it is not ported. */
-Script *createScript(EmuObject *obj);
+/** The logic of an object of the given class (vtable of the original), or nullptr. */
+Script *createScript(GameObject *obj, uint32 vtable);
 
 } // End of namespace Ivanoff
 

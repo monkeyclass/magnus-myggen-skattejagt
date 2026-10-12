@@ -19,7 +19,6 @@
  *
  */
 
-#include "ivanoff/machine.h"
 #include "ivanoff/scripts/scripts.h"
 
 namespace Ivanoff {
@@ -36,10 +35,9 @@ static const ScriptEntry kScripts[] = {
 	{ 0, nullptr }
 };
 
-Script *createScript(EmuObject *obj) {
-	uint32 vt = obj->getVtable();
+Script *createScript(GameObject *obj, uint32 vtable) {
 	for (const ScriptEntry *e = kScripts; e->create; e++)
-		if (e->vtable == vt)
+		if (e->vtable == vtable)
 			return e->create(obj);
 	return nullptr;
 }
