@@ -37,13 +37,19 @@ namespace Ivanoff {
  */
 class ResourcePack {
 public:
+	enum { kStreamLimit = 256 * 1024 };
+
 	bool open(const Common::Path &idxPath, const Common::Path &datPath, bool hasHeader);
 	bool hasResource(uint16 id) const { return _entries.contains(id); }
 	/** The count in the .idx header. */
 	uint32 getHeaderCount() const { return _headerCount; }
 	uint32 getSize(uint16 id) const;
-	/** Returns a new memory stream with the resource, or nullptr. */
-	Common::SeekableReadStream *getResource(uint16 id);
+	/**
+	 * Returns a new stream with the resource, or nullptr: in memory, or with
+	 * stream set and a large resource, over the pack's file (valid while the
+	 * pack is open; main thread only, as it shares the file's position).
+	 */
+	Common::SeekableReadStream *getResource(uint16 id, bool stream = false);
 
 private:
 	struct Entry {
@@ -61,7 +67,7 @@ class Resources {
 public:
 	bool open(const Common::String &language);
 	/** Ids below the shared pack's header count are in the shared pack, others in the language pack (FUN_00480f20). */
-	Common::SeekableReadStream *get(uint16 id);
+	Common::SeekableReadStream *get(uint16 id, bool stream = false);
 	bool has(uint16 id) const { return id < _shared.getHeaderCount() ? _shared.hasResource(id) : _language.hasResource(id); }
 	/** Returns a subtitle/text resource from the language pack (cp1252). */
 	Common::String getText(uint16 id);

@@ -22,6 +22,8 @@
 #include "common/debug.h"
 #include "common/memstream.h"
 
+#include "common/substream.h"
+
 #include "ivanoff/resources.h"
 
 namespace Ivanoff {
@@ -51,11 +53,15 @@ uint32 ResourcePack::getSize(uint16 id) const {
 	return _entries.contains(id) ? _entries[id].size : 0;
 }
 
-Common::SeekableReadStream *ResourcePack::getResource(uint16 id) {
+Common::SeekableReadStream *ResourcePack::getResource(uint16 id, bool stream) {
 	if (!_entries.contains(id))
 		return nullptr;
 
 	const Entry &e = _entries[id];
+	// Large animations are read from the file as they play, to save memory
+	// on small devices.
+	if (stream && e.size > kStreamLimit)
+		return new Common::SafeSeekableSubReadStream(&_dat, e.offset, e.offset + e.size, DisposeAfterUse::NO);
 	_dat.seek(e.offset);
 	return _dat.readStream(e.size);
 }
@@ -68,10 +74,10 @@ bool Resources::open(const Common::String &language) {
 	return _language.open(dir.join("mm2lng.idx"), dir.join("mm2lng.dat"), false);
 }
 
-Common::SeekableReadStream *Resources::get(uint16 id) {
+Common::SeekableReadStream *Resources::get(uint16 id, bool stream) {
 	if (id < _shared.getHeaderCount())
-		return _shared.getResource(id);
-	return _language.getResource(id);
+		return _shared.getResource(id, stream);
+	return _language.getResource(id, stream);
 }
 
 Common::String Resources::getText(uint16 id) {

@@ -201,3 +201,8 @@
 - Longer fuzzing (4000 messages, with and without variable fuzzing) in the weakest rooms (26, 29, 33, 34, 43, 46,
   57, 59): 48 runs, all identical; coverage 67%. Fuzzing is saturated: the rest of these handlers needs game state
   that only play reaches (the climbing game 46 gets its arrow-key messages but stays at 27%).
+- **2026-10-12: memory leak found and fixed.** Desktop RSS grew ~5 MB/s in rooms with looping animations (25, 28):
+  `Video::FlicDecoder` collects a dirty rect per decoded frame until `clearDirtyRects()`, which `Anim` never
+  called. Found with valgrind massif. Also, animation resources over 256 KB are now streamed from the .dat
+  (`SafeSeekableSubReadStream`, main thread only; sounds stay in memory because the mixer thread reads them). Peak
+  RSS over a 600 s walk: 53 MB (was 136 MB and growing). The Miyoo Mini has 128 MB; v0.2.0 would have run out.

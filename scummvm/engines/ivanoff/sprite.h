@@ -31,6 +31,7 @@
 #include "ivanoff/world.h"
 
 namespace Video {
+class FlicDecoder;
 class VideoDecoder;
 }
 
@@ -270,6 +271,8 @@ private:
 protected:
 	/** Opens the frames' source (an FLC from the resources). */
 	virtual Video::VideoDecoder *openDecoder();
+	/** The decoder's next frame. */
+	const Graphics::Surface *nextFrame();
 	/** Opens the decoder and decodes or caches the frames; sets _loaded. */
 	void loadFrames();
 	void releaseFrames();
@@ -277,6 +280,7 @@ protected:
 	virtual void convertFrame(const Graphics::Surface &src, Graphics::Surface &dst);
 
 	Video::VideoDecoder *_decoder = nullptr; ///< kept for large animations only
+	Video::FlicDecoder *_flic = nullptr;     ///< _decoder when it is an FLC decoder
 	Graphics::Surface *_current = nullptr;  ///< current frame of a large animation
 	int _decodedFrame = -1;
 	int _frameCount = 0;

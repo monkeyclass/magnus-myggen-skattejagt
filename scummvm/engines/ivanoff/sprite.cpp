@@ -471,7 +471,7 @@ void Anim::handleCommand(Message &msg) {
 
 Video::VideoDecoder *Anim::openDecoder() {
 	uint16 res = resourceId();
-	Common::SeekableReadStream *stream = g_engine->_resources.get(res);
+	Common::SeekableReadStream *stream = g_engine->_resources.get(res, true);
 	if (!stream) {
 		warning("Anim %d: no resource", res);
 		return nullptr;
@@ -493,7 +493,17 @@ Video::VideoDecoder *Anim::openDecoder() {
 		delete dec;
 		return nullptr;
 	}
+	_flic = dec;
 	return dec;
+}
+
+const Graphics::Surface *Anim::nextFrame() {
+	const Graphics::Surface *s = _decoder->decodeNextFrame();
+	// The FLC decoder collects the changed areas of every frame until they
+	// are cleared; nothing here uses them.
+	if (_flic)
+		_flic->clearDirtyRects();
+	return s;
 }
 
 void Anim::load() {
@@ -517,7 +527,7 @@ void Anim::loadFrames() {
 	// save memory on small devices.
 	if ((uint32)_width * _height * _frameCount <= kCacheLimit) {
 		for (int i = 0; i < _frameCount; i++) {
-			const Graphics::Surface *s = _decoder->decodeNextFrame();
+			const Graphics::Surface *s = nextFrame();
 			if (_decoder->hasDirtyPalette() || i == 0)
 				memcpy(_palette, _decoder->getPalette(), sizeof(_palette));
 			Graphics::Surface *copy = new Graphics::Surface();
@@ -526,6 +536,7 @@ void Anim::loadFrames() {
 		}
 		delete _decoder;
 		_decoder = nullptr;
+		_flic = nullptr;
 	} else {
 		_current = new Graphics::Surface();
 		_current->create(_width, _height, Graphics::PixelFormat::createFormatCLUT8());
@@ -557,6 +568,7 @@ void Anim::releaseFrames() {
 	}
 	delete _decoder;
 	_decoder = nullptr;
+	_flic = nullptr;
 	_decodedFrame = -1;
 }
 
@@ -569,7 +581,7 @@ void Anim::decodeTo(int frame) {
 	}
 	const Graphics::Surface *s = nullptr;
 	while (_decodedFrame < frame) {
-		s = _decoder->decodeNextFrame();
+		s = nextFrame();
 		if (!s)
 			break;
 		_decodedFrame++;
