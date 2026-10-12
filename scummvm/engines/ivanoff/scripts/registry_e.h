@@ -1,1 +1,10 @@
 // Batch e: SCRIPT(vtable, name) lines of scripts/batch_e.cpp.
+SCRIPT(0x4b5104, Object9)
+SCRIPT(0x4b50e4, Object10)
+SCRIPT(0x4b50c4, Object11)
+SCRIPT(0x4b50a4, Object12)
+SCRIPT(0x4b5084, Object13)
+SCRIPT(0x4b4e64, Object30)
+SCRIPT(0x4b4da4, Object36)
+SCRIPT(0x4b4b44, Object55)
+SCRIPT(0x4b4804, Object82)
