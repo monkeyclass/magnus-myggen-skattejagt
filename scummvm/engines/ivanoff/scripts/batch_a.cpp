@@ -60,7 +60,6 @@ enum {
 	kCStringDtor = 0x49fec5,     ///< CString::~CString
 	kCStringFormat = 0x49f000,   ///< CString::Format (cdecl)
 	kCStringEmpty = 0x4c70b0,    ///< afxEmptyString's data
-	kAfxModuleState = 0x4a881a,  ///< AfxGetModuleState()
 	kRedrawNow = 0x476a40,       ///< vtable slot 7 of the objects
 	kSaveGame = 0x4771c0,
 	kLoadGame = 0x4771e0,
@@ -331,361 +330,56 @@ private:
 };
 
 /**
- * The original's settings class (DAT_004cab98, constructor FUN_00474410):
- * the folder of the save games and the settings file "settings.dat", an
- * ini file with a [SETTINGS] section. The Win32 functions are called
- * through the interpreter (files and registry are the engine's emulation).
- *
- * Fields: +0x04, +0x14, +0x24 company, product and version folder names
- * (std::string), +0x34 the Windows version kind (1-3: no security
- * descriptors), +0x38 the settings file path once known.
+ * The settings (the class at 0x474410-0x476190, DAT_004cab98): an INI file
+ * and the installer's registry values. In this engine the save folder is
+ * always C:\\MM2\\appdata (ScummVM's save files) and the file is
+ * settings.dat there, with one section, [SETTINGS].
  */
 class GameSettings {
 public:
-	GameSettings(Machine &m, uint32 obj) : _m(m), _obj(obj) {}
+	GameSettings(Machine &m, uint32) : _m(m) {}
 
-	/** FUN_004749b0 */
+	/** FUN_004749b0 (GetPrivateProfileIntA) */
 	int32 getInt(const Common::String &key, int32 def) {
-		StdString k(_m, key);
-		uint32 file = iniPath();
-		EmuString section(_m, "SETTINGS");
-		uint32 args[4] = { section.addr(), k.cstr(), (uint32)def, file };
-		return win32(_m, kIatGetPrivateProfileIntA, 4, args);
+		Common::String v;
+		return _m.iniGet(kFile, "SETTINGS", key, v) ? atoi(v.c_str()) : def;
 	}
 
 	/** FUN_004748e0 */
 	void setInt(const Common::String &key, int32 value) {
-		StdString k(_m, key);
-		uint32 file = iniPath();
-		EmuString v(_m, Common::String::format("%d", value)); // _itoa
-		EmuString section(_m, "SETTINGS");
-		uint32 args[4] = { section.addr(), k.cstr(), v.addr(), file };
-		win32(_m, kIatWritePrivateProfileStringA, 4, args);
+		Common::String v = Common::String::format("%d", value);
+		_m.iniSet(kFile, "SETTINGS", key, &v);
 	}
 
 	/** FUN_00474a60: is the key in the settings file? */
 	bool hasKey(const Common::String &key) {
-		StdString k(_m, key);
-		uint32 file = iniPath();
-		EmuString section(_m, "SETTINGS");
-		EmuString def(_m, "\xff\xff");
-		EmuBuffer buf(_m, 4);
-		uint32 args[6] = { section.addr(), k.cstr(), def.addr(), buf.addr(), 4, file };
-		win32(_m, kIatGetPrivateProfileStringA, 6, args);
-		// strncmp(buf, "\xff\xff", 2) != 0
-		Emu::Memory &mem = _m.mem();
-		return mem.r8(buf.addr()) != 0xff || mem.r8(buf.addr() + 1) != 0xff;
+		Common::String v;
+		return _m.iniGet(kFile, "SETTINGS", key, v);
 	}
 
-	/** FUN_00474780: a value of HKLM\Software\IVANOFF Interactive\MM2, or "". */
+	/** FUN_00474780: a value of HKLM\\Software\\IVANOFF Interactive\\MM2, or "". */
 	void gameRegString(StdString &out, const Common::String &value) {
-		StdString v(_m, value);
-		StdString k(_m, kRegistryKey);
-		StdString result(_m);
-		{
-			StdString valueArg(_m);
-			valueArg.copyFrom(v);
-			StdString keyArg(_m);
-			keyArg.copyFrom(k);
-			regString(result, 0x80000002, keyArg, valueArg);
-		}
-		out.copyFrom(result);
-		result.release();
-		k.release();
-		v.release();
+		Common::String name = value;
+		name.toLowercase();
+		out.assign(_m.registryValue("80000002\\software\\ivanoff interactive\\mm2\\" + name));
 	}
 
 	/** FUN_00474650: the folder of the save games. */
-	void saveDir(StdString &out, bool create) {
-		StdString dir(_m);
-		saveDirInto(dir, create);
-		out.copyFrom(dir);
+	void saveDir(StdString &out, bool) {
+		out.assign(kDir);
 	}
 
-	/** FUN_00474700 / FUN_004758e0: creates the file if it doesn't exist. */
-	bool createFile(StdString &path) {
-		bool ok = createFileAt(path.cstr());
-		path.release();
-		return ok;
-	}
+	/** FUN_00474700: creates the file if it doesn't exist; the save game writes it anyway. */
+	void createFile(StdString &) {}
 
 private:
-	/** The settings file's name; FUN_00475d40 computes it the first time. */
-	uint32 iniPath() {
-		Emu::Memory &mem = _m.mem();
-		if (mem.r32(_obj + 0x40) == 0) {
-			StdString dir(_m);
-			saveDirInto(dir, true);
-			if (!dir.empty()) {
-				dir.lock();
-				if (dir.lastChar() != '\\')
-					dir.append("\\");
-				StdString path(_m);
-				concat(path, dir, "settings.dat");
-				path.storeTo(_obj + 0x38);
-				path.release();
-				createFileAt(mem.r32(_obj + 0x3c));
-			}
-		}
-		uint32 file = mem.r32(_obj + 0x3c);
-		return file ? file : (uint32)kEmptyText;
-	}
-
-	/** FUN_00476060 / FUN_00476190: out = a + b. */
-	void concat(StdString &out, const StdString &a, const Common::String &b) {
-		StdString tmp(_m);
-		tmp.copyFrom(a);
-		tmp.append(b);
-		out.copyFrom(tmp);
-	}
-
-	/** The std::string at off of the settings object. */
-	StdString field(uint32 off) { return StdString::view(_m, _obj + off); }
-
-	/** FUN_00474c70: the folder of the save games (and settings). */
-	void saveDirInto(StdString &out, bool create) {
-		if (!specialFolder(out, 0x23, create)) { // CSIDL_COMMON_APPDATA
-			{
-				StdString value(_m, "Common AppData");
-				StdString key(_m, "software\\microsoft\\windows\\currentversion\\explorer\\shell folders");
-				regString(out, 0x80000002, key, value);
-			}
-			if (out.empty()) {
-				moduleDir(out);
-				out.append("appdata\\");
-				if (create)
-					createDir(out);
-				return;
-			}
-		}
-		// FUN_00475170: "company\product\version\"
-		StdString sub(_m);
-		{
-			StdString t1(_m), t2(_m), t3(_m), t4(_m), t5(_m);
-			concat(t1, field(4), "\\");
-			concat(t2, t1, field(0x14).text());
-			concat(t3, t2, "\\");
-			concat(t4, t3, field(0x24).text());
-			concat(t5, t4, "\\");
-			sub.copyFrom(t5);
-			t5.release();
-			t4.release();
-			t3.release();
-			t2.release();
-			t1.release();
-		}
-		if (!out.empty()) {
-			out.lock();
-			if (out.lastChar() != '\\')
-				out.append("\\");
-		}
-		if (create)
-			createDirs(out);
-		out.append(sub.text());
-	}
-
-	/** FUN_004755d0: a string value of the registry (key and value are released). */
-	bool regString(StdString &out, uint32 root, StdString &key, StdString &value) {
-		Emu::Memory &mem = _m.mem();
-		bool ok = false;
-		EmuBuffer hkey(_m, 4);
-		uint32 openArgs[5] = { root, key.cstr(), 0, 0x20019, hkey.addr() };
-		if (win32(_m, kIatRegOpenKeyExA, 5, openArgs) == 0) {
-			EmuBuffer type(_m, 4);
-			EmuBuffer size(_m, 4);
-			EmuBuffer data(_m, 0x100);
-			mem.w32(type.addr(), 1);
-			mem.w32(size.addr(), 0x100);
-			uint32 queryArgs[6] = { mem.r32(hkey.addr()), value.cstr(), 0, type.addr(), data.addr(), size.addr() };
-			ok = win32(_m, kIatRegQueryValueExA, 6, queryArgs) == 0;
-			if (ok) {
-				// (the original leaves the key open when the value is missing)
-				uint32 h = mem.r32(hkey.addr());
-				win32(_m, kIatRegCloseKey, 1, &h);
-				out.assign(mem.readString(data.addr(), 0x100));
-			}
-		}
-		key.release();
-		value.release();
-		return ok;
-	}
-
-	/** FUN_00475aa0: SHGetSpecialFolderPathA, when shell32 has it. */
-	bool specialFolder(StdString &out, uint32 csidl, bool create) {
-		EmuString lib(_m, "shell32");
-		uint32 a = lib.addr();
-		uint32 h = win32(_m, kIatLoadLibraryA, 1, &a);
-		if (!h)
-			return false;
-		EmuString name(_m, "SHGetSpecialFolderPathA");
-		uint32 procArgs[2] = { h, name.addr() };
-		uint32 proc = win32(_m, kIatGetProcAddress, 2, procArgs);
-		bool ok = proc != 0;
-		if (ok) {
-			EmuBuffer buf(_m, 0x104);
-			uint32 args[4] = { 0, buf.addr(), csidl, (uint32)(create ? 1 : 0) };
-			ok = _m.cpu().call(proc, 0, 4, args) != 0;
-			if (ok)
-				out.assign(_m.mem().readString(buf.addr(), 0x104));
-		}
-		win32(_m, kIatFreeLibrary, 1, &h);
-		return ok;
-	}
-
-	/** FUN_00474f60: the folder of the executable, with a final backslash. */
-	void moduleDir(StdString &out) {
-		EmuBuffer buf(_m, 0x104);
-		uint32 args[3] = { 0, buf.addr(), 0x104 };
-		if (win32(_m, kIatGetModuleFileNameA, 3, args) == 0)
-			return;
-		Common::String path = _m.mem().readString(buf.addr(), 0x104);
-		// _splitpath: drive and directory
-		Common::String drive, dir;
-		uint pos = 0;
-		if (path.size() >= 2 && path[1] == ':') {
-			drive = Common::String(path.c_str(), 2);
-			pos = 2;
-		}
-		for (uint i = path.size(); i > pos; i--) {
-			if (path[i - 1] == '\\' || path[i - 1] == '/') {
-				dir = Common::String(path.c_str() + pos, i - pos);
-				break;
-			}
-		}
-		out.assign(drive);
-		out.append(dir);
-		out.lock();
-		if (out.lastChar() != '\\')
-			out.append("\\");
-	}
-
-	/** FUN_00475300: creates the company, product and version folders. */
-	bool createDirs(const StdString &base) {
-		StdString s(_m);
-		s.copyFrom(base);
-		s.lock();
-		if (s.lastChar() != '\\')
-			s.append("\\");
-		s.append(field(4).text());
-		bool ok = createDir(s);
-		if (ok) {
-			s.append("\\");
-			s.append(field(0x14).text());
-			ok = createDir(s);
-			if (ok) {
-				s.append("\\");
-				s.append(field(0x24).text());
-				ok = createDir(s);
-			}
-		}
-		return ok;
-	}
-
-	/** FUN_00475760 */
-	bool createDir(const StdString &path) {
-		int32 kind = _m.mem().r32(_obj + 0x34);
-		if (kind == 1 || kind == 2 || kind == 3) {
-			uint32 args[2] = { path.cstr(), 0 };
-			return win32(_m, kIatCreateDirectoryA, 2, args) != 0;
-		}
-		return withEveryoneAccess(path.cstr(), false);
-	}
-
-	/** FUN_004758e0 */
-	bool createFileAt(uint32 path) {
-		if (!path)
-			path = kEmptyText;
-		int32 kind = _m.mem().r32(_obj + 0x34);
-		if (kind == 1 || kind == 2 || kind == 3) {
-			uint32 args[7] = { path, 0xc0000000, 3, 0, 1, 0x80, 0 };
-			uint32 h = win32(_m, kIatCreateFileA, 7, args);
-			if (h == 0xffffffff)
-				return false;
-			win32(_m, kIatCloseHandle, 1, &h);
-			return true;
-		}
-		return withEveryoneAccess(path, true);
-	}
-
-	/**
-	 * FUN_00475be0, FUN_00475c40, FUN_00475c90, FUN_00475ce0: an advapi32
-	 * function, loaded for each call. Returns false when it is missing.
-	 */
-	bool advapi(const char *fn, uint32 nargs, const uint32 *args, uint32 &result) {
-		EmuString lib(_m, "advapi32");
-		uint32 a = lib.addr();
-		uint32 h = win32(_m, kIatLoadLibraryA, 1, &a);
-		if (!h)
-			return false;
-		EmuString name(_m, fn);
-		uint32 procArgs[2] = { h, name.addr() };
-		uint32 proc = win32(_m, kIatGetProcAddress, 2, procArgs);
-		if (proc)
-			result = _m.cpu().call(proc, 0, nargs, args);
-		win32(_m, kIatFreeLibrary, 1, &h);
-		return proc != 0;
-	}
-
-	/**
-	 * The rest of FUN_00475760 / FUN_004758e0: creates the folder or file
-	 * with a security descriptor that gives everyone access.
-	 */
-	bool withEveryoneAccess(uint32 path, bool file) {
-		Emu::Memory &mem = _m.mem();
-		bool ok = false;
-		EmuBuffer authority(_m, 8);
-		mem.w8(authority.addr() + 5, 1); // SECURITY_WORLD_SID_AUTHORITY
-		EmuBuffer sid(_m, 4);
-		uint32 r = 0;
-		uint32 sidArgs[11] = { authority.addr(), 1, 0, 0, 0, 0, 0, 0, 0, 0, sid.addr() };
-		if (!advapi("AllocateAndInitializeSid", 11, sidArgs, r) || r == 0)
-			return false;
-		EmuBuffer access(_m, 0x20); // EXPLICIT_ACCESS
-		mem.w32(access.addr(), 0x10000000);
-		mem.w32(access.addr() + 4, 2);
-		mem.w32(access.addr() + 8, 1);
-		mem.w32(access.addr() + 0x18, 5);
-		mem.w32(access.addr() + 0x1c, mem.r32(sid.addr()));
-		EmuBuffer acl(_m, 4);
-		uint32 aclArgs[4] = { 0, access.addr(), 0, acl.addr() }; // (sic: 0 entries)
-		if (advapi("SetEntriesInAclA", 4, aclArgs, r) && r == 0) {
-			uint32 allocArgs[2] = { 0x40, 0x14 };
-			uint32 sd = win32(_m, kIatLocalAlloc, 2, allocArgs);
-			if (sd) {
-				uint32 initArgs[2] = { sd, 1 };
-				if (advapi("InitializeSecurityDescriptor", 2, initArgs, r) && r != 0) {
-					uint32 daclArgs[4] = { sd, 1, mem.r32(acl.addr()), 0 };
-					if (advapi("SetSecurityDescriptorDacl", 4, daclArgs, r) && r != 0) {
-						EmuBuffer sa(_m, 0xc);
-						mem.w32(sa.addr(), 0xc);
-						mem.w32(sa.addr() + 4, sd);
-						if (file) {
-							uint32 args[7] = { path, 0x10000000, 3, sa.addr(), 1, 0x80, 0 };
-							uint32 h = win32(_m, kIatCreateFileA, 7, args);
-							ok = h != 0xffffffff;
-							if (ok)
-								win32(_m, kIatCloseHandle, 1, &h);
-						} else {
-							uint32 args[2] = { path, sa.addr() };
-							ok = win32(_m, kIatCreateDirectoryA, 2, args) != 0;
-						}
-					}
-				}
-				win32(_m, kIatLocalFree, 1, &sd);
-			}
-			uint32 a = mem.r32(acl.addr());
-			if (a)
-				win32(_m, kIatLocalFree, 1, &a);
-		}
-		uint32 s = mem.r32(sid.addr());
-		if (s)
-			win32(_m, kIatFreeSid, 1, &s);
-		return ok;
-	}
-
+	static const char *const kDir;
+	static const char *const kFile;
 	Machine &_m;
-	uint32 _obj;
 };
+
+const char *const GameSettings::kDir = "C:\\MM2\\appdata\\";
+const char *const GameSettings::kFile = "C:\\MM2\\appdata\\settings.dat";
 
 /**
  * Helpers shared by the classes of this batch.
@@ -1267,8 +961,8 @@ private:
 			// The picture child loads the room's picture (its +0x50 field).
 			uint16 thumb = 0xb55 + slot - 1;
 			Child *c = getChild(thumb);
-			if (c && c->_addr)
-				machine().mem().w16(c->_addr + 0x50, picture);
+			if (c)
+				c->setAltResource(picture);
 			uint16 id = c ? c->getId() : thumb;
 			cmd(kSelf, kCmdPlay, id);
 			cmd(kSelf, kCmdSetPos, id, (int16)pos, (int16)(pos >> 16), 0x520d);
@@ -1511,14 +1205,8 @@ private:
 	}
 
 	void init() {
-		// "/notime" on the command line: no clock.
-		Emu::Memory &mem = machine().mem();
-		uint32 state = machine().cpu().call(kAfxModuleState, 0);
-		uint32 app = mem.r32(state + 4);
-		Common::String cmdLine = mem.readString(mem.r32(app + 0x70));
-		cmdLine.toLowercase();
-		if (cmdLine.contains("/notime"))
-			var(6).set(1);
+		// The original sets var 6 (no clock) for "/notime" on the command
+		// line; there is no command line here.
 		// FUN_00477190 [unverified: sound parameters]
 		setGlobal32(kGlobSound1, 0x5622);
 		setGlobal32(kGlobSound2, 2);

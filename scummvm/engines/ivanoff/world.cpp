@@ -29,77 +29,9 @@
 
 namespace Ivanoff {
 
-// --- variables ---
-
-int32 CyclerVar::get() {
-	// FUN_0047d230 + FUN_0047d140: return the value, then step it.
-	int32 v = _value;
-	if (_max < _min)
-		_value = (v <= _max) ? _min : v - 1;
-	else
-		_value = (_max <= v) ? _min : v + 1;
-	return v;
-}
-
-int32 RandomVar::get() {
-	// FUN_0047cf50
-	if (_min < 0)
-		_min = 0;
-	if (_max < _min)
-		_max = _min;
-	_value = _min + g_engine->getRandomNumber(_max - _min);
-	return _value;
-}
-
-ShuffleVar::ShuffleVar(uint16 id, bool save, int32 min, int32 max) : Var(id, save), _min(0), _max(0) {
-	_min = min;
-	_max = max;
-	if (_max < _min)
-		SWAP(_min, _max);
-	reset();
-	_value = _min;
-}
-
-void ShuffleVar::reset() {
-	_pool.clear();
-	for (int32 v = _min; v <= _max; v++)
-		_pool.push_back(v);
-	_used = 0;
-}
-
-void ShuffleVar::set(int32 value) {
-	// FUN_0047d5c0: sets the upper bound (or the lower one if smaller).
-	if (value < _min) {
-		_max = _min;
-		_min = value;
-	} else {
-		_max = value;
-	}
-	reset();
-	_value = _min;
-}
-
-int32 ShuffleVar::get() {
-	// FUN_0047d390: draw without repetition until the pool is used up.
-	uint n = _pool.size();
-	if (n == 0)
-		return _value;
-	if (_used == n)
-		reset();
-	uint last = n - 1 - _used;
-	uint i = g_engine->getRandomNumber(last);
-	_value = _pool[i];
-	_used++;
-	_pool[i] = _pool[last];
-	_pool[last] = _value;
-	return _value;
-}
-
 // --- GameObject ---
 
 GameObject::~GameObject() {
-	for (uint i = 0; i < _vars.size(); i++)
-		delete _vars[i];
 	for (uint i = 0; i < _children.size(); i++)
 		delete _children[i];
 }
@@ -143,54 +75,16 @@ void GameObject::setCursor(uint32 cursor) {
 	g_engine->setGlobalCursor(cursor);
 }
 
-Var &GameObject::var(uint16 id) {
-	for (uint i = 0; i < _vars.size(); i++)
-		if (_vars[i]->getId() == id)
-			return *_vars[i];
-
-	// FUN_0047c210 returns a shared dummy variable; create one so that
-	// missing variables behave like the original (value 0).
-	warning("Object %d has no variable %d", _id, id);
-	return addVar(id, 0, false);
+GameVar *GameObject::var(uint16 id) {
+	return _vars.get(id);
 }
 
-Var &GameObject::var(uint16 id, uint16 objectId) {
+GameVar *GameObject::var(uint16 id, uint16 objectId) {
+	// FUN_00477060: a variable of another object.
 	GameObject *obj = g_engine->_world->get(objectId);
 	if (!obj)
 		error("var(%d, %d): no such object", id, objectId);
 	return obj->var(id);
-}
-
-Var &GameObject::addVar(uint16 id, int32 value, bool save) {
-	Var *v = new Var(id, save);
-	v->set(value);
-	_vars.push_back(v);
-	return *v;
-}
-
-StringVar &GameObject::addStringVar(uint16 id, const Common::String &value, bool save) {
-	StringVar *v = new StringVar(id, save);
-	v->_string = value;
-	_vars.push_back(v);
-	return *v;
-}
-
-Var &GameObject::addCycler(uint16 id, int32 min, int32 max, bool save) {
-	Var *v = new CyclerVar(id, save, min, max);
-	_vars.push_back(v);
-	return *v;
-}
-
-Var &GameObject::addRandom(uint16 id, int32 min, int32 max, bool save) {
-	Var *v = new RandomVar(id, save, min, max);
-	_vars.push_back(v);
-	return *v;
-}
-
-Var &GameObject::addShuffle(uint16 id, int32 min, int32 max, bool save) {
-	Var *v = new ShuffleVar(id, save, min, max);
-	_vars.push_back(v);
-	return *v;
 }
 
 Child *GameObject::addChild(Child *child) {
@@ -224,12 +118,6 @@ void GameObject::dispatchChildCommand(Message &msg) {
 			if (_children[i]->testBit(target))
 				_children[i]->handleCommand(msg);
 	}
-}
-
-void GameObject::syncVars(Common::Serializer &s) {
-	for (uint i = 0; i < _vars.size(); i++)
-		if (_vars[i]->isSaved())
-			_vars[i]->sync(s);
 }
 
 // --- World ---
@@ -285,7 +173,13 @@ int32 World::deliverCommand(GameObject *from, Message &msg) {
 	if (gDebugLevel >= 4) {
 		// Text commands pass strings: print them, not their (varying) addresses.
 		Emu::Memory &mem = g_engine->_machine->mem();
-		if ((msg.cmd == 0xd || msg.cmd == 0xf) && msg.p1 && mem.isMapped(msg.p1))
+		if (msg.cmd == 9 && msg.p2 && mem.isMapped(msg.p2)) {
+			// Frame triggers pass a message the game allocated.
+			Message t;
+			g_engine->_machine->readMessage(msg.p2, t);
+			debug(4, "cmd %d -> %d.%d (%d, [%d %d %d %d (%d, %d, %d)], %d)", msg.cmd, msg.target, msg.msg, msg.p1,
+			      t.target, t.mode, t.cmd, t.msg, t.p1, t.p2, t.p3, msg.p3);
+		} else if ((msg.cmd == 0xd || msg.cmd == 0xf) && msg.p1 && mem.isMapped(msg.p1))
 			debug(4, "cmd %d -> %d.%d (\"%s\", %d, %d)", msg.cmd, msg.target, msg.msg, mem.readString(msg.p1, 256).c_str(), msg.p2, msg.p3);
 		else
 			debug(4, "cmd %d -> %d.%d (%d, %d, %d)", msg.cmd, msg.target, msg.msg, msg.p1, msg.p2, msg.p3);
@@ -370,11 +264,6 @@ void World::update() {
 		_posted.pop_front();
 		deliver(nullptr, m);
 	}
-}
-
-void World::sync(Common::Serializer &s) {
-	for (uint i = 0; i < _order.size(); i++)
-		_order[i]->syncVars(s);
 }
 
 } // End of namespace Ivanoff

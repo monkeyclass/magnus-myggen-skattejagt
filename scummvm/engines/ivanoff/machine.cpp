@@ -29,6 +29,7 @@
 #include "ivanoff/ivanoff.h"
 #include "ivanoff/machine.h"
 #include "ivanoff/script.h"
+#include "ivanoff/scripts/setup.h"
 #include "ivanoff/sprite.h"
 
 namespace Ivanoff {
@@ -50,6 +51,9 @@ enum {
 	kSetupObjects = 0x43f760,
 	kVarContainerCtor = 0x47c0a0,
 	kCStringRelease = 0x49fec5,
+	kCStringFromSz = 0x49ff33,
+	kEmptyCString = 0x4c70c4,
+	kVtBaseVar = 0x4b5fc4,
 	kAfxGetModuleState = 0x4a881a,
 	kMessageVtable = 0x4b5fa0
 };
@@ -99,7 +103,15 @@ enum EngineFunc {
 	kUnloadChildren,  // 476a30 (and its thunk 4771b0)
 	kWorldSave,       // 47bea0
 	kWorldLoad,       // 47bfa0
-	kQuit             // 477200: post WM_APP+3 (quit) to the main window
+	kQuit,            // 477200: post WM_APP+3 (quit) to the main window
+	kAddInt,          // 476ce0
+	kAddString,       // 476d70
+	kAddRandom,       // 476e20
+	kAddCycler,       // 476eb0
+	kAddShuffle,      // 476f40
+	kAddMap,          // 476fd0
+	kVarLookup,       // 477050
+	kVarLookupOf      // 477060
 };
 
 static const struct {
@@ -140,7 +152,24 @@ static const struct {
 	{ 0x4771b0, 0, kUnloadChildren },
 	{ 0x47bea0, 8, kWorldSave },
 	{ 0x47bfa0, 8, kWorldLoad },
-	{ 0x477200, 0, kQuit }
+	{ 0x477200, 0, kQuit },
+	{ 0x476ce0, 12, kAddInt },
+	{ 0x476d70, 12, kAddString },
+	{ 0x476e20, 16, kAddRandom },
+	{ 0x476eb0, 16, kAddCycler },
+	{ 0x476f40, 16, kAddShuffle },
+	{ 0x476fd0, 8, kAddMap },
+	{ 0x477050, 4, kVarLookup },
+	{ 0x477060, 8, kVarLookupOf }
+};
+
+// The variables are native (vars.h). Original code reaches them through
+// shims: small objects whose vtable slots are traps (cleanup per slot).
+static const uint16 kVarSlotCleanup[] = {
+	0, 4, 0, 4, 4, 4, 4, 4,   // 00 -, dtor, 08, eq, gt, lt, ge, le
+	4, 4, 4, 4, 4, 4, 0, 4,   // 20 setRaw, setString, assignString, set, add, sub, get, toString
+	4, 4, 0, 0, 4, 4, 0, 4,   // 40 at, next, getInt, count, getString, v++, ++v, v--
+	0, 4, 4, 0                // 60 --v, save, load, 6c
 };
 
 // Engine code the interpreter may run: variables, variable containers and
@@ -832,6 +861,13 @@ void Machine::installEngineTraps() {
 	installChildTraps(kVtText, 44);
 	installChildTraps(kVtVideo, 44);
 
+	_varStubs = _mem.alloc(ARRAYSIZE(kVarSlotCleanup) * 4);
+	_varVtable = _mem.alloc(ARRAYSIZE(kVarSlotCleanup) * 4);
+	for (uint i = 0; i < ARRAYSIZE(kVarSlotCleanup); i++) {
+		_cpu.addTrap(_varStubs + i * 4, kVarSlotCleanup[i]);
+		_mem.w32(_varVtable + i * 4, _varStubs + i * 4);
+	}
+
 	_cpu._guardStart = 0x476000;
 	_cpu._guardEnd = 0x490000;
 	for (uint i = 0; i < ARRAYSIZE(kEmulatedEngineCode); i++)
@@ -927,8 +963,38 @@ void Machine::createObjects() {
 	_containers[_kernel->_childContainer] = _kernel;
 	g_engine->_world->add(_kernel);
 
+	if (!ConfMan.hasKey("native_setup") || ConfMan.getBool("native_setup")) {
+		SetupBuilder b(this);
+		Ivanoff::createObjects(b);
+		debug(1, "Machine: created %d objects natively", _objects.size());
+		return;
+	}
+
 	uint32 args[2] = { _world, k };
+	if (ConfMan.hasKey("record_setup")) {
+		_record = new Common::DumpFile();
+		if (!_record->open(Common::Path(ConfMan.get("record_setup")))) {
+			delete _record;
+			_record = nullptr;
+		}
+	}
 	_cpu.call(kSetupObjects, 0, 2, args);
+	if (_record) {
+		// The state the setup code wrote directly: event masks, alternative resources.
+		for (Common::HashMap<uint32, EmuObject *>::iterator it = _objects.begin(); it != _objects.end(); ++it)
+		{
+			Common::String line = Common::String::format("S obj %x %d mask %x param %x vt %x mem", it->_key,
+			                     it->_value->getId(), _mem.r32(it->_key + 0x18), _mem.r32(it->_key + 8), _mem.r32(it->_key));
+			uint32 size = _mem.r32(it->_key - 8); // the heap block's size
+			for (uint32 o = 0x1c; o + 4 <= size && o < 0x400; o += 4)
+				line += Common::String::format(" %x", _mem.r32(it->_key + o));
+			_record->writeString(line + "\n");
+		}
+		for (Common::HashMap<uint32, Child *>::iterator it = _children.begin(); it != _children.end(); ++it)
+			_record->writeString(Common::String::format("S child %x alt %x\n", it->_key, _mem.r16(it->_key + 0x50)));
+		delete _record;
+		_record = nullptr;
+	}
 	debug(1, "Machine: created %d objects, %d children", _objects.size(), _children.size());
 }
 
@@ -958,6 +1024,26 @@ void Machine::attachScripts() {
 			n++;
 	}
 	debug(1, "Machine: %d objects run native logic", n);
+}
+
+EmuObject *Machine::newObject(uint16 id, uint32 vtable) {
+	// The memory the scripts may still use: the vtable (the class), the id,
+	// the event mask (+0x18) and the child container (+0x14).
+	uint32 a = _mem.alloc(0x20);
+	_mem.w32(a, vtable);
+	_mem.w16(a + 4, id);
+	_mem.w32(a + 8, _kernel->getAddr());
+	_mem.w32(a + 0xc, _world);
+	EmuObject *obj = new EmuObject(this, id, a);
+	obj->_childContainer = _mem.alloc(0x14);
+	_mem.w32(a + 0x14, obj->_childContainer);
+	_objects[a] = obj;
+	_containers[obj->_childContainer] = obj;
+	return obj;
+}
+
+void Machine::registerObject(EmuObject *obj) {
+	g_engine->_world->add(obj);
 }
 
 EmuObject *Machine::objectAt(uint32 addr) const {
@@ -1031,6 +1117,8 @@ void Machine::trap(CPU &cpu, uint32 addr) {
 		importCall(cpu, _imports[addr]);
 	else if (_childTraps.contains(addr))
 		childMethod(cpu, addr);
+	else if (addr >= _varStubs && addr < _varStubs + ARRAYSIZE(kVarSlotCleanup) * 4)
+		varMethod(cpu, addr - _varStubs);
 	else
 		error("Machine: unknown trap %08x", addr);
 }
@@ -1044,6 +1132,20 @@ void Machine::engineCall(CPU &cpu, int id) {
 	uint32 self = cpu.r[ECX];
 	World *world = g_engine->_world;
 	uint32 result = 0;
+
+	if (_record) {
+		// Debugging aid ("record_setup"): the calls of the original setup code.
+		Common::String line = Common::String::format("E %d %x", id, self);
+		for (int i = 0; i < 10; i++)
+			line += Common::String::format(" %x", cpu.arg(i));
+		if (id == kNewText)
+			line += " \"" + _mem.readString(cpu.arg(3)) + "\"";
+		else if (id == kNewVideo)
+			line += " \"" + _mem.readString(cpu.arg(2)) + "\"";
+		else if (id == kAddString)
+			line += " \"" + _mem.readString(cpu.arg(1)) + "\"";
+		_record->writeString(line + "\n");
+	}
 
 	switch (id) {
 	case kObjectCtor: {
@@ -1252,51 +1354,84 @@ void Machine::engineCall(CPU &cpu, int id) {
 		g_engine->quitGame();
 		break;
 	case kWorldSave:
-	case kWorldLoad: {
-		// FUN_0047bea0(file, version) / FUN_0047bfa0(file, version): the file
-		// class and the objects' variable code are the original's.
-		bool save = id == kWorldSave;
-		uint32 name = cpu.arg(0), version = cpu.arg(1);
-		uint32 file = _mem.alloc(0x10);
-		cpu.call(0x48d160, file);
-		uint32 args[3] = { name, save ? 2u : 1u, 0 };
-		if ((cpu.call(0x48d230, file, 2, args) & 0xff) == 0) {
-			cpu.call(_mem.r32(_mem.r32(file)), file, 1);
-			result = 0;
-			break;
-		}
-		uint32 tmp = _mem.alloc(8);
-		bool ok = true;
-		if (save) {
-			_mem.w32(tmp, version);
-			uint32 h[3] = { 0, tmp, 4 };
-			cpu.call(0x48d3f0, file, 3, h);
-		} else {
-			_mem.w32(tmp, 0);
-			_mem.w32(tmp + 4, tmp);
-			uint32 h[3] = { 0, tmp + 4, 0 };
-			cpu.call(0x48d450, file, 3, h);
-			ok = _mem.r32(tmp) == version;
-			if (!ok)
-				warning("Machine: save file version %d, expected %d", _mem.r32(tmp), version);
-		}
-		if (ok) {
-			const Common::Array<GameObject *> &objs = world->getObjects();
-			for (uint i = 0; i < objs.size(); i++) {
-				EmuObject *o = (EmuObject *)objs[i];
-				if (!o->_native)
-					cpu.call(save ? 0x477080 : 0x477090, o->getAddr(), file);
-			}
-		}
-		result = cpu.call(0x48d350, file) & 0xff;
-		cpu.call(_mem.r32(_mem.r32(file)), file, 1);
-		_mem.free(tmp);
+		// FUN_0047bea0(file, version)
+		result = saveWorld(_mem.readString(cpu.arg(0)), cpu.arg(1)) ? 1 : 0;
 		break;
-	}
+	case kWorldLoad:
+		// FUN_0047bfa0(file, version)
+		result = loadWorld(_mem.readString(cpu.arg(0)), cpu.arg(1)) ? 1 : 0;
+		break;
 	case kSetKeyFocus:
 		result = world->_keyFocus;
 		world->_keyFocus = cpu.arg(0);
 		break;
+	case kAddInt:
+	case kAddString:
+	case kAddRandom:
+	case kAddCycler:
+	case kAddShuffle:
+	case kAddMap: {
+		// FUN_00476ce0 and the others: create a variable of the object.
+		EmuObject *obj = objectAt(self);
+		if (!obj)
+			error("Machine: variable for unknown object %08x", self);
+		uint16 varId = cpu.arg(0), owner = obj->getId();
+		GameVar *v;
+		uint32 save;
+		switch (id) {
+		case kAddInt:
+			v = new IntVar(varId, owner);
+			v->set(cpu.arg(1));
+			save = cpu.arg(2);
+			break;
+		case kAddString:
+			v = new StringVar(varId, owner);
+			v->assignString(_mem.readString(cpu.arg(1)));
+			releaseCString(cpu, 1);
+			save = cpu.arg(2);
+			break;
+		case kAddRandom:
+			v = new RandomVar(varId, owner, cpu.arg(1), cpu.arg(2));
+			save = cpu.arg(3);
+			break;
+		case kAddCycler:
+			v = new CyclerVar(varId, owner, cpu.arg(1), cpu.arg(2));
+			save = cpu.arg(3);
+			break;
+		case kAddShuffle:
+			v = new ShuffleVar(varId, owner, cpu.arg(1), cpu.arg(2));
+			save = cpu.arg(3);
+			break;
+		default:
+			v = new MapVar(varId, owner);
+			save = cpu.arg(1);
+			break;
+		}
+		v->_save = save != 0;
+		obj->_vars.add(v);
+		result = varShim(v);
+		break;
+	}
+	case kVarLookup: {
+		EmuObject *obj = objectAt(self);
+		if (!obj)
+			error("Machine: variable of unknown object %08x", self);
+		result = varShim(obj->var(cpu.arg(0)));
+		break;
+	}
+	case kVarLookupOf: {
+		// FUN_00477060: the original reads through a null object when it is
+		// missing; the fuzzer's messages name such objects.
+		GameObject *obj = world->get(cpu.arg(1));
+		if (!obj && ConfMan.hasKey("fuzz_dict"))
+			obj = _kernel;
+		if (!obj) {
+			g_engine->debugFault("unmapped address");
+			error("Machine: variable %d of missing object %d", cpu.arg(0), cpu.arg(1));
+		}
+		result = varShim(obj->var(cpu.arg(0)));
+		break;
+	}
 	case kAppCtor:
 		// FUN_0047b5d0(startObject 0x11, 1, 640, 480, title, setup, ...):
 		// IvanoffEngine plays this part.
@@ -1304,6 +1439,159 @@ void Machine::engineCall(CPU &cpu, int id) {
 		break;
 	default:
 		error("Machine: engine function %d not implemented", id);
+	}
+	cpu.r[EAX] = result;
+}
+
+// A save file is a list of records (key, size, data): the version (key 0),
+// then each object's variables in the world's order (FUN_0048d080 file class).
+
+bool Machine::saveWorld(const Common::String &file, uint32 version) {
+	const Common::Array<GameObject *> &objs = g_engine->_world->getObjects();
+	SaveRecords f;
+	int32 v = version;
+	f.writeInts(0, &v, 1);
+	for (uint i = 0; i < objs.size(); i++)
+		objs[i]->_vars.save(f);
+	return writeWholeFile(file, f._bytes);
+}
+
+bool Machine::loadWorld(const Common::String &file, uint32 version) {
+	const Common::Array<GameObject *> &objs = g_engine->_world->getObjects();
+	SaveRecords f;
+	Common::Array<int32> v;
+	if (!readWholeFile(file, f._bytes)) {
+		debug(1, "Machine: can't load %s", file.c_str());
+		return false;
+	}
+	if (!f.readInts(0, v) || v.empty() || (uint32)v[0] != version) {
+		warning("Machine: save file version %d, expected %d", v.empty() ? -1 : v[0], version);
+		return false;
+	}
+	for (uint i = 0; i < objs.size(); i++)
+		objs[i]->_vars.load(f);
+	return true;
+}
+
+uint32 Machine::varShim(GameVar *v) {
+	if (_shimOf.contains(v))
+		return _shimOf[v];
+	uint32 a = _mem.alloc(0x20);
+	_mem.w32(a, _varVtable);
+	_mem.w16(a + 4, v->getId());
+	_mem.w32(a + 0x18, v->key());
+	_shimOf[v] = a;
+	_shimVar[a] = v;
+	return a;
+}
+
+GameVar *Machine::shimVar(uint32 addr) const {
+	return _shimVar.contains(addr) ? _shimVar[addr] : nullptr;
+}
+
+void Machine::makeCString(uint32 out, const Common::String &text) {
+	uint32 sz = _mem.alloc(text.size() + 1);
+	_mem.writeString(sz, text);
+	_cpu.call(kCStringFromSz, out, sz);
+	_mem.free(sz);
+}
+
+void Machine::varMethod(CPU &cpu, uint32 slot) {
+	uint32 self = cpu.r[ECX];
+	GameVar *v = shimVar(self);
+	if (!v) {
+		cpu.dumpState();
+		error("Machine: variable method %02x on %08x", slot, self);
+	}
+	uint32 result = self;
+	switch (slot) {
+	case 0x04: // destructor: the variables belong to their object
+	case 0x08:
+		break;
+	case 0x0c:
+	case 0x10:
+	case 0x14:
+	case 0x18:
+	case 0x1c: {
+		GameVar *o = shimVar(cpu.arg(0));
+		if (!o)
+			error("Machine: variable comparison with %08x", cpu.arg(0));
+		bool r = slot == 0x0c ? v->eq(*o) : slot == 0x10 ? v->gt(*o) : slot == 0x14 ? v->lt(*o) :
+		         slot == 0x18 ? v->ge(*o) : v->le(*o);
+		result = r ? 1 : 0;
+		break;
+	}
+	case 0x20:
+		v->setRaw(cpu.arg(0));
+		break;
+	case 0x24:
+	case 0x28: {
+		// The string is a CString passed by value, released by the callee.
+		Common::String str = _mem.readString(cpu.arg(0));
+		if (slot == 0x24)
+			v->setString(str);
+		else
+			v->assignString(str);
+		releaseCString(cpu, 0);
+		break;
+	}
+	case 0x2c:
+		v->set(cpu.arg(0));
+		break;
+	case 0x30:
+		v->add(cpu.arg(0));
+		break;
+	case 0x34:
+		v->sub(cpu.arg(0));
+		break;
+	case 0x38:
+	case 0x6c:
+		result = v->get();
+		break;
+	case 0x3c:
+	case 0x50:
+		makeCString(cpu.arg(0), slot == 0x3c ? v->toString() : v->getString());
+		result = cpu.arg(0);
+		break;
+	case 0x40:
+		result = varShim(v->at(cpu.arg(0)));
+		break;
+	case 0x44:
+		result = varShim(v->next(cpu.arg(0)));
+		break;
+	case 0x48:
+		result = v->getInt();
+		break;
+	case 0x4c:
+		result = v->count();
+		break;
+	case 0x54:
+	case 0x5c: {
+		// v++ / v--: a copy of the variable before (FUN_0047cad0), with an
+		// empty string; callers only destroy it.
+		uint32 out = cpu.arg(0);
+		_mem.w32(out, kVtBaseVar);
+		_mem.w16(out + 4, v->getId());
+		_mem.w32(out + 8, v->getInt());
+		_mem.w32(out + 0xc, kEmptyCString);
+		_mem.w32(out + 0x14, v->_save);
+		_mem.w32(out + 0x18, v->key());
+		if (slot == 0x54)
+			v->increment();
+		else
+			v->decrement();
+		result = out;
+		break;
+	}
+	case 0x58:
+		v->increment();
+		break;
+	case 0x60:
+		v->decrement();
+		break;
+	default:
+		cpu.dumpState();
+		error("Machine: variable method %02x not implemented", slot);
 	}
 	cpu.r[EAX] = result;
 }
@@ -1329,6 +1617,17 @@ void Machine::childMethod(CPU &cpu, uint32 addr) {
 	Message m(kSelf, 0, c->getId(), cpu.arg(0), cpu.arg(1), cpu.arg(2));
 	uint32 result = 0;
 	bool textRes = c->getType() == kTypeTextRes;
+
+	if (_record) {
+		Common::String line = Common::String::format("M %x %x %x %x %x", self, slot, cpu.arg(0), cpu.arg(1), cpu.arg(2));
+		uint32 ma = slot == 0x58 ? cpu.arg(1) : slot == 0x34 ? cpu.arg(0) : 0;
+		if (ma) {
+			Message t;
+			readMessage(ma, t);
+			line += Common::String::format(" msg %d %d %d %d %d %d %d", t.target, t.mode, t.cmd, t.msg, t.p1, t.p2, t.p3);
+		}
+		_record->writeString(line + "\n");
+	}
 
 	switch (slot) {
 	case 0x0c:

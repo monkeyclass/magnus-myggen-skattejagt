@@ -106,6 +106,13 @@ void Child::handleCommand(Message &msg) {
 	}
 }
 
+Child *Child::setAltResource(uint16 res) {
+	_altResource = res;
+	if (_addr)
+		g_engine->_machine->mem().w16(_addr + 0x50, res);
+	return this;
+}
+
 uint16 Child::resourceId() const {
 	uint16 alt = _addr ? g_engine->_machine->mem().r16(_addr + 0x50) : _altResource;
 	return alt ? alt : _id;

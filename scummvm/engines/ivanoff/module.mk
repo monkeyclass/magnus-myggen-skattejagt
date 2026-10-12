@@ -10,6 +10,7 @@ MODULE_OBJS = \
 	metaengine.o \
 	resources.o \
 	script.o \
+	vars.o \
 	scripts/base.o \
 	scripts/batch_a.o \
 	scripts/batch_b.o \
@@ -21,6 +22,8 @@ MODULE_OBJS = \
 	scripts/batch_h.o \
 	scripts/items.o \
 	scripts/registry.o \
+	scripts/setup.o \
+	scripts/setupbuilder.o \
 	sprite.o \
 	world.o
 

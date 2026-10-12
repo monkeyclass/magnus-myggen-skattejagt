@@ -147,6 +147,25 @@ bool Machine::readWholeFile(const Common::String &winPath, Common::String &text)
 	return true;
 }
 
+bool Machine::readWholeFile(const Common::String &winPath, Common::Array<byte> &data) {
+	uint32 h = openFile(winPath, 0x80000000, 3);
+	if (h == kInvalidHandle)
+		return false;
+	data = _files[h]->data;
+	closeFile(h);
+	return true;
+}
+
+bool Machine::writeWholeFile(const Common::String &winPath, const Common::Array<byte> &data) {
+	uint32 h = openFile(winPath, 0xc0000000, 2);
+	if (h == kInvalidHandle)
+		return false;
+	_files[h]->data = data;
+	_files[h]->dirty = true;
+	closeFile(h);
+	return true;
+}
+
 void Machine::writeWholeFile(const Common::String &winPath, const Common::String &text) {
 	uint32 h = openFile(winPath, 0xc0000000, 2);
 	if (h == kInvalidHandle)

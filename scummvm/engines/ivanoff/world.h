@@ -28,6 +28,8 @@
 #include "common/serializer.h"
 #include "common/str.h"
 
+#include "ivanoff/vars.h"
+
 namespace Ivanoff {
 
 class Child;
@@ -139,82 +141,6 @@ struct Message {
 };
 
 /**
- * A variable owned by an object (FUN_0047ca20 and subclasses).
- * Variables flagged "save" are written to save games as
- * (object id, var id, length, value) records, like the original.
- */
-class Var {
-public:
-	Var(uint16 id, bool save) : _id(id), _save(save) {}
-	virtual ~Var() {}
-
-	uint16 getId() const { return _id; }
-	bool isSaved() const { return _save; }
-
-	/** vtable +0x38. Some kinds change their state when read. */
-	virtual int32 get() { return _value; }
-	/** vtable +0x2c */
-	virtual void set(int32 value) { _value = value; }
-	/** vtable +0x30 */
-	void add(int32 n) { set(get() + n); }
-	/** vtable +0x34 */
-	void sub(int32 n) { set(get() - n); }
-	/** The value without the side effects of get(). */
-	int32 peek() const { return _value; }
-
-	virtual void sync(Common::Serializer &s) { s.syncAsSint32LE(_value); }
-
-protected:
-	uint16 _id;
-	bool _save;
-	int32 _value = 0;
-};
-
-/** FUN_00476d70: a string variable. */
-class StringVar : public Var {
-public:
-	StringVar(uint16 id, bool save) : Var(id, save) {}
-	Common::String _string;
-	void sync(Common::Serializer &s) override { s.syncString(_string); }
-};
-
-/**
- * FUN_00476eb0 (vtable 0x4b60a0): get() returns the value, then steps it
- * towards max, wrapping to min. set() sets max and resets to min.
- */
-class CyclerVar : public Var {
-public:
-	CyclerVar(uint16 id, bool save, int32 min, int32 max) : Var(id, save), _min(min), _max(max) { _value = min; }
-	int32 get() override;
-	void set(int32 value) override { _max = value; _value = _min; }
-private:
-	int32 _min, _max;
-};
-
-/** FUN_00476e20 (vtable 0x4b6030): get() returns a random value in [min, max]. */
-class RandomVar : public Var {
-public:
-	RandomVar(uint16 id, bool save, int32 min, int32 max) : Var(id, save), _min(min), _max(max) {}
-	int32 get() override;
-	void set(int32 value) override { _max = value; }
-private:
-	int32 _min, _max;
-};
-
-/** FUN_00476f40 (vtable 0x4b6110): get() returns the next value of a random permutation of [min, max]. */
-class ShuffleVar : public Var {
-public:
-	ShuffleVar(uint16 id, bool save, int32 min, int32 max);
-	int32 get() override;
-	void set(int32 value) override;
-private:
-	void reset();
-	int32 _min, _max;
-	Common::Array<int32> _pool;
-	uint _used = 0;
-};
-
-/**
  * A top-level object: a room, a sub-scene or a global controller.
  * Mirrors the original class with vtable slots 3-6:
  * createVars, createChildren, accepts, handle.
@@ -257,20 +183,11 @@ public:
 	void setCursor(uint32 cursor);
 
 	/** FUN_00477050 */
-	Var &var(uint16 id);
+	GameVar *var(uint16 id);
 	/** FUN_00477060: a variable of another object. */
-	Var &var(uint16 id, uint16 objectId);
-
-	/** FUN_00476ce0 */
-	Var &addVar(uint16 id, int32 value, bool save);
-	/** FUN_00476d70 */
-	StringVar &addStringVar(uint16 id, const Common::String &value, bool save);
-	/** FUN_00476eb0 */
-	Var &addCycler(uint16 id, int32 min, int32 max, bool save);
-	/** FUN_00476e20 */
-	Var &addRandom(uint16 id, int32 min, int32 max, bool save);
-	/** FUN_00476f40 */
-	Var &addShuffle(uint16 id, int32 min, int32 max, bool save);
+	GameVar *var(uint16 id, uint16 objectId);
+	/** The object's variables (+0x10). */
+	VarContainer _vars;
 
 	/** FUN_004770a0 */
 	Child *addChild(Child *child);
@@ -280,15 +197,12 @@ public:
 	/** Dispatch a child command (FUN_0047c6b0). */
 	void dispatchChildCommand(Message &msg);
 
-	void syncVars(Common::Serializer &s);
-
 	/** +0x18: which key events the object receives (FUN_0047bde0). */
 	virtual uint32 eventMask() { return _flags18; }
 	uint32 _flags18 = 0;
 
 protected:
 	uint16 _id;
-	Common::Array<Var *> _vars;
 	Common::Array<Child *> _children;
 };
 
@@ -326,8 +240,6 @@ public:
 
 	/** Runs due timers and posted messages. */
 	void update();
-
-	void sync(Common::Serializer &s);
 
 	/** World +0x14 (FUN_00477240): the only object receiving key events, 0 = all. */
 	uint16 _keyFocus = 0;

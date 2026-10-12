@@ -83,6 +83,13 @@ public:
 
 	/** FUN_00477a90 */
 	void setCursor(uint32 cursor);
+	/** vtable +0x1c (command 0x29): adds a tag. */
+	void addTag(uint16 tag) {
+		Message m(kSelf, 0x29, _id, tag);
+		handleCommand(m);
+	}
+	/** +0x50: load this resource instead of the id. */
+	Child *setAltResource(uint16 res);
 	uint32 getCursor() const { return _cursor; }
 	/** FUN_00477830 */
 	void setFlags(uint32 flags);

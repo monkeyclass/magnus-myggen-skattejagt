@@ -22,6 +22,7 @@
 #ifndef IVANOFF_MACHINE_H
 #define IVANOFF_MACHINE_H
 
+#include "common/file.h"
 #include "common/hash-str.h"
 #include "common/hashmap.h"
 #include "common/path.h"
@@ -82,8 +83,11 @@ public:
 	bool load(const Common::Path &exePath);
 	/** Runs the C++ static initializers of the executable (CRT _initterm). */
 	void runInitializers();
-	/** Runs the original setup routine, which creates and registers all objects. */
+	/** Creates and registers all objects (natively, or with "native_setup=false" by the original setup routine). */
 	void createObjects();
+	/** An object of the given class, with its memory in the interpreter (scripts/setup.h). */
+	EmuObject *newObject(uint16 id, uint32 vtable);
+	void registerObject(EmuObject *obj);
 	/** Attaches the native logic of the ported classes ("native_scripts": all, none or a list of vtables). */
 	void attachScripts();
 
@@ -101,6 +105,20 @@ public:
 	/** The engine's input object, owner of the sprite cursors. */
 	EmuObject *kernel() const { return _kernel; }
 	Child *childAt(uint32 addr) const;
+	/** The game's INI files (GetPrivateProfileString and the others). */
+	bool iniGet(const Common::String &file, const Common::String &section, const Common::String &key, Common::String &value);
+	void iniSet(const Common::String &file, const Common::String &section, const Common::String &key, const Common::String *value);
+	/** A registry value ("80000002\\software\\...\\name", lower case), or "". */
+	Common::String registryValue(const Common::String &path) const {
+		return _registry.contains(path) ? _registry[path] : Common::String();
+	}
+
+	/** Saves / loads the variables of all objects (the original's .m2s format). */
+	bool saveWorld(const Common::String &file, uint32 version);
+	bool loadWorld(const Common::String &file, uint32 version);
+	/** The interpreter's handle on a native variable, and back. */
+	uint32 varShim(GameVar *v);
+	GameVar *shimVar(uint32 addr) const;
 
 	/** A path in the game folder for a Windows path (C:\\MM2\\...), or "". */
 	Common::String gamePath(const Common::String &winPath) {
@@ -119,6 +137,9 @@ private:
 
 	void engineCall(Emu::CPU &cpu, int id);
 	void childMethod(Emu::CPU &cpu, uint32 addr);
+	void varMethod(Emu::CPU &cpu, uint32 slot);
+	/** Constructs an MFC CString at out (FUN_0049ff33). */
+	void makeCString(uint32 out, const Common::String &text);
 	void importCall(Emu::CPU &cpu, const Common::String &name);
 
 	// Files (machine_files.cpp). C:\MM2\ is the game folder; files in
@@ -136,8 +157,8 @@ private:
 	Common::HashMap<uint32, EmuFile *> _files;
 	bool readWholeFile(const Common::String &winPath, Common::String &text);
 	void writeWholeFile(const Common::String &winPath, const Common::String &text);
-	bool iniGet(const Common::String &file, const Common::String &section, const Common::String &key, Common::String &value);
-	void iniSet(const Common::String &file, const Common::String &section, const Common::String &key, const Common::String *value);
+	bool readWholeFile(const Common::String &winPath, Common::Array<byte> &data);
+	bool writeWholeFile(const Common::String &winPath, const Common::Array<byte> &data);
 
 	Child *createChild(uint32 addr, Child *child, uint32 vtable);
 	void syncChild(Child *c);
@@ -157,6 +178,13 @@ private:
 	Common::HashMap<uint32, EmuObject *> _objects;
 	Common::HashMap<uint32, EmuObject *> _containers;
 	Common::HashMap<uint32, Child *> _children;
+	uint32 _varStubs = 0, _varVtable = 0;
+	Common::DumpFile *_record = nullptr; ///< record_setup
+	struct PtrHash {
+		uint operator()(const GameVar *p) const { return (uint)(uintptr)p; }
+	};
+	Common::HashMap<GameVar *, uint32, PtrHash> _shimOf;
+	Common::HashMap<uint32, GameVar *> _shimVar;
 
 	uint32 _lastError = 0;
 	Common::Array<uint32> _tls;

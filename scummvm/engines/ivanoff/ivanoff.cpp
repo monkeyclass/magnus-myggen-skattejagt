@@ -388,6 +388,9 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 		} else if (!strcmp(kind, "esc")) {
 			onKey(Common::KEYCODE_ESCAPE, 27, true);
 			onKey(Common::KEYCODE_ESCAPE, 27, false);
+		} else if (!strcmp(kind, "save")) {
+			// Saves to SavedGame<x>.m2s with version y.
+			_machine->saveWorld(Common::String::format("C:\\MM2\\appdata\\SavedGame%u.m2s", x), y);
 		} else if (!strcmp(kind, "quit")) {
 			quitGame();
 		}
