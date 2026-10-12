@@ -45,30 +45,9 @@ enum {
  */
 class HeapBlock {
 public:
-	HeapBlock(Machine &m) : _m(m) { _addr = m.mem().alloc(0x2c); }
-	~HeapBlock() { _m.mem().free(_addr); }
+	HeapBlock(Machine &m) : _m(m), _addr(0) {}
 private:
 	Machine &_m;
-	uint32 _addr;
-};
-
-/**
- * A local variable of the original handler (a CString object) on the
- * interpreter's stack, so that it doesn't change the heap.
- */
-class StackSlot {
-public:
-	StackSlot(Machine &m, uint32 size = 4) : _m(m), _size(size) {
-		_m.cpu().r[Emu::ESP] -= size;
-		_addr = _m.cpu().r[Emu::ESP];
-		_m.mem().w32(_addr, 0);
-	}
-	~StackSlot() { _m.cpu().r[Emu::ESP] += _size; }
-	uint32 addr() const { return _addr; }
-	uint32 value() const { return _m.mem().r32(_addr); }
-private:
-	Machine &_m;
-	uint32 _size;
 	uint32 _addr;
 };
 
@@ -78,10 +57,10 @@ private:
  * stack in the original, so it is kept off the heap here too.
  */
 static void postStep(Machine &m, VarRef v, uint32 slot) {
-	StackSlot tmp(m, 0x20);
-	uint32 arg = tmp.addr();
-	v.callSlot(slot, 1, &arg);
-	m.cpu().call(kCStringFree, tmp.addr() + 0xc);
+	if (slot == 0x54)
+		v.postIncrement();
+	else
+		v.postDecrement();
 }
 
 /** A script of this batch: Base's accepts and handleMessage() with the heap block held. */
@@ -108,13 +87,12 @@ protected:
 
 	/** Writes the object's event mask (+0x18). */
 	void setEventMask(uint32 mask) {
-		this->machine().mem().w32(this->self() + 0x18, mask);
+		Script::setEventMask(mask);
 	}
 
 	/** Variable slot +0xc: the values of two variables are equal. */
 	static bool sameValue(VarRef a, VarRef b) {
-		uint32 arg = b.addr();
-		return a.callSlot(0x0c, 1, &arg) != 0;
+		return a.eq(b);
 	}
 
 	/**
@@ -123,24 +101,9 @@ protected:
 	 * original does).
 	 */
 	void cmdVarText(uint16 child, VarRef v) {
-		Machine &m = this->machine();
-		StackSlot copy(m);
-		{
-			StackSlot str(m);
-			uint32 arg = str.addr();
-			v.callSlot(0x3c, 1, &arg);
-			m.cpu().call(kCStringCopy, copy.addr(), str.addr());
-			m.cpu().call(kCStringFree, str.addr());
-		}
-		this->cmd(kSelf, kCmdSetText, child, (int32)copy.value());
-		m.cpu().call(kCStringFree, copy.addr());
+		this->cmdString(kSelf, kCmdSetText, child, v.toString());
 	}
 
-	/** FUN_00476c50: a command message on the heap. Returns its address. */
-	uint32 newCommand(uint16 target, int32 command, uint16 child, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0) {
-		uint32 args[6] = { target, (uint32)command, child, (uint32)p1, (uint32)p2, (uint32)p3 };
-		return this->callGame(kNewCommand, 6, args);
-	}
 };
 
 } // End of anonymous namespace
@@ -772,12 +735,7 @@ protected:
 		}
 		points *= factor;
 
-		StackSlot str(machine());
-		machine().mem().w32(str.addr(), machine().mem().r32(kCStringEmpty));
-		uint32 args[3] = { str.addr(), 0x4c625c, (uint32)points }; // "%li"
-		machine().cpu().call(kCStringFormat, 0, 3, args);
-		cmd(kSelf, kCmdSetText, 0xb10, (int32)str.value());
-		machine().cpu().call(kCStringFree, str.addr());
+		cmdString(kSelf, kCmdSetText, 0xb10, Common::String::format("%d", points));
 	}
 
 	void throwDart() {
@@ -787,10 +745,8 @@ protected:
 		int32 y1 = 0x1c0 - var(0x93).get() * 9;
 		cmd(kSelf, kCmdSetClip, 0x169, 3);
 		cmd(kSelf, kCmdSetClip, 0x169, 7);
-		uint32 m = newCommand(0x1e, kCmdSetPos, 0x169, x0 + ((x1 - x0) / 3) * 2, y0 + ((y1 - y0) / 3) * 2, 0);
-		cmd(kSelf, kCmdSetClip, 0x169, 3, m);
-		m = newCommand(0x1e, kCmdSetPos, 0x169, x1, y1, 0);
-		cmd(kSelf, kCmdSetClip, 0x169, 7, m);
+		cmdFrameTrigger(kSelf, 0x169, 3, makeCmd(0x1e, kCmdSetPos, 0x169, x0 + ((x1 - x0) / 3) * 2, y0 + ((y1 - y0) / 3) * 2, 0));
+		cmdFrameTrigger(kSelf, 0x169, 7, makeCmd(0x1e, kCmdSetPos, 0x169, x1, y1, 0));
 		cmd(kSelf, kCmdPlay, 0x169, 0x1e);
 		cmd(kSelf, kCmdSetPos, 0x169, x0, y0, 0x4e66);
 		cmd(kSelf, kCmdPlay, 0x176);
@@ -820,13 +776,10 @@ protected:
 		cmd(kSelf, kCmdPlay, 0xb10);
 		cmd(kSelf, kCmdSetPos, 0xb10, 0x1ae, 10, 0x4e2a);
 		cmd(kSelf, kCmdSetView, 0xb10, 200, 0x28);
-		StackSlot str(machine());
-		machine().cpu().call(kCStringCtor, str.addr(), 0x4c6260); // "0"
-		cmd(kSelf, kCmdSetText, 0xb10, (int32)str.value());
+		cmdString(kSelf, kCmdSetText, 0xb10, "0");
 		send(kSelf, 0x4b, 0x11, 1);
 		setKeyFocus(getId());
 		setEventMask(0x30000);
-		machine().cpu().call(kCStringFree, str.addr());
 	}
 
 	void handleMessage(Message &msg) override {

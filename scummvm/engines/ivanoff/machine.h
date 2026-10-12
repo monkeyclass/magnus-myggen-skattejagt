@@ -108,6 +108,8 @@ public:
 	/** The game's INI files (GetPrivateProfileString and the others). */
 	bool iniGet(const Common::String &file, const Common::String &section, const Common::String &key, Common::String &value);
 	void iniSet(const Common::String &file, const Common::String &section, const Common::String &key, const Common::String *value);
+	/** OpenFile(OF_EXIST): does the file exist? */
+	bool fileExists(const Common::String &winPath);
 	/** A registry value ("80000002\\software\\...\\name", lower case), or "". */
 	Common::String registryValue(const Common::String &path) const {
 		return _registry.contains(path) ? _registry[path] : Common::String();

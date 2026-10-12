@@ -740,7 +740,7 @@ bool EmuObject::accepts(Message &msg) {
 }
 
 uint32 EmuObject::eventMask() {
-	return _native ? 0 : _machine->mem().r32(_addr + 0x18);
+	return _native ? 0 : _flags18;
 }
 
 void EmuObject::handle(Message &msg) {

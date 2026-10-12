@@ -19,6 +19,7 @@
  *
  */
 
+#include "common/config-manager.h"
 #include "common/textconsole.h"
 
 #include "ivanoff/ivanoff.h"
@@ -33,67 +34,6 @@ enum {
 	kVarLookupOf = 0x477060,
 	kCStringDtor = 0x49fec5
 };
-
-// --- VarRef ---
-
-uint32 VarRef::callSlot(uint32 slot, uint32 nargs, const uint32 *args) const {
-	if (!_addr) {
-		// The original reads the vtable of a null pointer.
-		g_engine->debugFault("unmapped address");
-		warning("VarRef: call of +%02x on a missing variable", slot);
-		return 0;
-	}
-	Emu::Memory &mem = _machine->mem();
-	return _machine->cpu().call(mem.r32(mem.r32(_addr) + slot), _addr, nargs, args);
-}
-
-int32 VarRef::get() const {
-	return (int32)callSlot(0x38);
-}
-
-void VarRef::set(int32 value) {
-	uint32 a = value;
-	callSlot(0x2c, 1, &a);
-}
-
-void VarRef::add(int32 n) {
-	uint32 a = n;
-	callSlot(0x30, 1, &a);
-}
-
-void VarRef::sub(int32 n) {
-	uint32 a = n;
-	callSlot(0x34, 1, &a);
-}
-
-VarRef VarRef::at(int32 key) const {
-	uint32 a = key;
-	return VarRef(_machine, callSlot(0x40, 1, &a));
-}
-
-void VarRef::remove(int32 key) {
-	uint32 a = key;
-	callSlot(0x44, 1, &a);
-}
-
-bool VarRef::eq(const VarRef &other) const {
-	uint32 a = other._addr;
-	return (callSlot(0x0c, 1, &a) & 0xff) != 0;
-}
-
-void VarRef::callCopySlot(uint32 slot) {
-	// The copy is a variable object (0x1c bytes, FUN_0047cad0) with a
-	// CString at +0x0c. The original keeps it on the stack; so does this,
-	// which keeps the heap as the original leaves it.
-	Emu::CPU &cpu = _machine->cpu();
-	cpu.r[Emu::ESP] -= 0x20;
-	uint32 out = cpu.r[Emu::ESP];
-	_machine->mem().w32(out, 0);
-	uint32 arg = out;
-	callSlot(slot, 1, &arg);
-	cpu.call(kCStringDtor, out + 0xc);
-	cpu.r[Emu::ESP] += 0x20;
-}
 
 // --- Script ---
 
@@ -134,20 +74,76 @@ int32 Script::cmd(uint16 target, int32 command, uint16 child, int32 p1, int32 p2
 }
 
 int32 Script::cmdString(uint16 target, int32 command, uint16 child, const Common::String &str, int32 p2, int32 p3) {
-	Emu::Memory &mem = _machine->mem();
-	uint32 a = mem.alloc(str.size() + 1);
-	mem.write(a, str.c_str(), str.size() + 1);
-	int32 result = cmd(target, command, child, (int32)a, p2, p3);
-	mem.free(a);
-	return result;
+	if (command == 0)
+		return 0;
+	Message m(target, command, child, 0, p2, p3);
+	m.text = str.c_str();
+	if (m.target == kSelf)
+		m.target = getId();
+	g_engine->_world->deliverCommand(_obj, m);
+	return m.result;
 }
 
+void Script::cmdFrameTrigger(uint16 target, uint16 child, int32 frame, const Message &trigger) {
+	Message m(target, 9, child, frame);
+	m.trigger = &trigger;
+	if (m.target == kSelf)
+		m.target = getId();
+	g_engine->_world->deliverCommand(_obj, m);
+}
+
+Message Script::makeMsg(uint16 target, uint16 msg, int32 p1, int32 p2, int32 p3) const {
+	return Message(target == kSelf ? getId() : target, 0, msg, p1, p2, p3, 1);
+}
+
+Message Script::makeCmd(uint16 target, int32 command, uint16 child, int32 p1, int32 p2, int32 p3) const {
+	return Message(target == kSelf ? getId() : target, command, child, p1, p2, p3, 2);
+}
+
+void Script::redrawNow() {
+	g_engine->redrawNow();
+}
+
+void Script::unloadChildren() {
+	const Common::Array<Child *> &ch = _obj->getChildren();
+	for (uint i = 0; i < ch.size(); i++) {
+		Message m(getId(), kCmdUnload, ch[i]->getId());
+		ch[i]->handleCommand(m);
+	}
+}
+
+bool Script::saveGame(const Common::String &file) {
+	return _machine->saveWorld(file, 0x10100);
+}
+
+bool Script::loadGame(const Common::String &file) {
+	return _machine->loadWorld(file, 0x10100);
+}
+
+void Script::quitGame() {
+	g_engine->quitGame();
+}
+
+void Script::setEventMask(uint32 mask) {
+	_obj->_flags18 = mask;
+}
+
+
 VarRef Script::var(uint16 id) {
-	return VarRef(_machine, _machine->cpu().call(kVarLookup, self(), id));
+	return VarRef(_obj->var(id));
 }
 
 VarRef Script::var(uint16 id, uint16 objectId) {
-	return VarRef(_machine, _machine->cpu().call(kVarLookupOf, self(), id, objectId));
+	// FUN_00477060. The fuzzer's messages name objects that don't exist;
+	// the original would read through a null object.
+	GameObject *obj = g_engine->_world->get(objectId);
+	if (!obj && ConfMan.hasKey("fuzz_dict"))
+		obj = _machine->kernel();
+	if (!obj) {
+		g_engine->debugFault("unmapped address");
+		error("Script: variable %d of missing object %d", id, objectId);
+	}
+	return VarRef(obj->var(id));
 }
 
 void Script::setCursor(uint32 cursor) {
@@ -205,11 +201,11 @@ uint32 Script::callGame(uint32 addr, uint32 nargs, const uint32 *args) {
 }
 
 int32 Script::global32(uint32 addr) const {
-	return (int32)_machine->mem().r32(addr);
+	return g_engine->getGlobal(addr);
 }
 
 void Script::setGlobal32(uint32 addr, int32 value) {
-	_machine->mem().w32(addr, value);
+	g_engine->setGlobal(addr, value);
 }
 
 } // End of namespace Ivanoff

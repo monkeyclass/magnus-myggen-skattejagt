@@ -134,6 +134,10 @@ struct Message {
 	int32 handled = 0;
 	int32 p1 = 0, p2 = 0, p3 = 0;
 	int32 result = 0;
+	/** Command 9 (frame triggers): the message to send, instead of p2 pointing to one. */
+	const Message *trigger = nullptr;
+	/** Text commands (0xd, 0xf): the text, instead of p1 pointing to it. */
+	const char *text = nullptr;
 
 	Message() {}
 	Message(uint16 target_, int32 cmd_, uint16 msg_, int32 p1_ = 0, int32 p2_ = 0, int32 p3_ = 0, int mode_ = 0) :

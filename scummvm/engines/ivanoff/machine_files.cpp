@@ -147,6 +147,14 @@ bool Machine::readWholeFile(const Common::String &winPath, Common::String &text)
 	return true;
 }
 
+bool Machine::fileExists(const Common::String &winPath) {
+	uint32 h = openFile(winPath, 0x80000000, 3);
+	if (h == kInvalidHandle)
+		return false;
+	closeFile(h);
+	return true;
+}
+
 bool Machine::readWholeFile(const Common::String &winPath, Common::Array<byte> &data) {
 	uint32 h = openFile(winPath, 0x80000000, 3);
 	if (h == kInvalidHandle)

@@ -62,8 +62,7 @@ protected:
 	 */
 	class HeapBlock {
 	public:
-		HeapBlock(Machine &m) : _m(m) { _addr = m.mem().alloc(0x2c); }
-		~HeapBlock() { _m.mem().free(_addr); }
+		HeapBlock(Machine &m) : _m(m), _addr(0) {}
 	private:
 		Machine &_m;
 		uint32 _addr;
@@ -74,17 +73,7 @@ protected:
 	 * a CString returned by value, copied once more as the original does).
 	 */
 	void cmdVarText(uint16 child, VarRef v) {
-		Emu::Memory &mem = machine().mem();
-		uint32 str = mem.alloc(4);
-		uint32 copy = mem.alloc(4);
-		uint32 arg = str;
-		v.callSlot(0x3c, 1, &arg);
-		machine().cpu().call(kCStringCopy, copy, str);
-		cmd(kSelf, kCmdSetText, child, (int32)mem.r32(copy));
-		machine().cpu().call(kCStringFree, copy);
-		machine().cpu().call(kCStringFree, str);
-		mem.free(copy);
-		mem.free(str);
+		cmdString(kSelf, kCmdSetText, child, v.toString());
 	}
 };
 
@@ -934,7 +923,7 @@ void Object40::onEnter() {
 	for (int i = 0; i < ARRAYSIZE(kThings); i++)
 		var(0xb0).at(kThings[i]).set(0);
 	enterCommon();
-	cmd(kSelf, kCmdSetText, 0xb2d, 0x4c6260); // "" (a constant of mm2run.exe)
+	cmdString(kSelf, kCmdSetText, 0xb2d, "0");
 	var(0x19, 0xf).set(0);
 	cmd(kSelf, kCmdSetZ, 0xfe03, 0x7d);
 	cmd(kSelf, kCmdSetPos, 0xfe04, 0x50, 0x78, 0x78);

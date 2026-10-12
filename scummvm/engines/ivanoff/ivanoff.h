@@ -96,6 +96,13 @@ public:
 	 */
 	void debugFault(const char *what);
 
+	/**
+	 * Global variables of the original's game code (DAT_xxxxxxxx), by
+	 * address; the initial values are those of mm2run.exe's data.
+	 */
+	int32 getGlobal(uint32 addr) const { return _globals.contains(addr) ? _globals[addr] : 0; }
+	void setGlobal(uint32 addr, int32 value) { _globals[addr] = value; }
+
 	/** Draws the screen now (the original's synchronous repaint). */
 	void redrawNow() { render(); }
 
@@ -178,6 +185,8 @@ private:
 
 	uint32 _statsTime = 0;
 	uint64 _statsInstructions = 0;
+
+	Common::HashMap<uint32, int32> _globals;
 
 	uint32 _virtualStep = 0;
 	uint32 _virtualTime = 0;

@@ -71,6 +71,11 @@ IvanoffEngine::IvanoffEngine(OSystem *syst, const ADGameDescription *gameDesc) :
 	_gameDescription(gameDesc), _randomSource("Ivanoff") {
 	g_engine = this;
 	memset(_palette, 0, sizeof(_palette));
+	// The globals of mm2run.exe that start with a value other than 0.
+	_globals[0x4c6940] = 0x7fff; // the sound volume
+	_globals[0x4c6970] = 22050;  // FUN_00477190's parameters [unverified: sound format]
+	_globals[0x4c6974] = 2;
+	_globals[0x4c6978] = 125;
 }
 
 IvanoffEngine::~IvanoffEngine() {

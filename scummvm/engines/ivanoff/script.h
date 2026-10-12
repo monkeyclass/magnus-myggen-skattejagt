@@ -24,6 +24,7 @@
 
 #include "common/str.h"
 
+#include "ivanoff/vars.h"
 #include "ivanoff/world.h"
 
 namespace Ivanoff {
@@ -33,50 +34,42 @@ class EmuObject;
 class Machine;
 
 /**
- * A game variable (the original's variable classes, FUN_0047ca20 and
- * subclasses). While objects are created by the original setup code the
- * variables live in the interpreter's memory; this handle calls their
- * methods by vtable slot.
+ * A game variable (vars.h): a handle that is cheap to copy. Missing
+ * variables are their container's placeholder, as in the original.
  */
 class VarRef {
 public:
 	VarRef() {}
-	VarRef(Machine *m, uint32 addr) : _machine(m), _addr(addr) {}
+	explicit VarRef(GameVar *v) : _var(v) {}
 
-	bool isValid() const { return _addr != 0; }
-	uint32 addr() const { return _addr; }
+	bool isValid() const { return _var != nullptr; }
+	GameVar *var() const { return _var; }
 
 	/** +0x38. Random, cycler and shuffle variables change when read. */
-	int32 get() const;
+	int32 get() const { return _var->get(); }
 	/** +0x2c */
-	void set(int32 value);
+	void set(int32 value) { _var->set(value); }
 	/** +0x30 */
-	void add(int32 n);
+	void add(int32 n) { _var->add(n); }
 	/** +0x34 */
-	void sub(int32 n);
-	/** +0x40: the element of a map variable (created when missing). */
-	VarRef at(int32 key) const;
-	/** +0x44: removes the element of a map variable. */
-	void remove(int32 key);
+	void sub(int32 n) { _var->sub(n); }
+	/** +0x40: a map variable with the key selected. */
+	VarRef at(int32 key) const { return VarRef(_var->at(key)); }
+	/** +0x44: the next element of a map variable. */
+	VarRef next(int32 restart) const { return VarRef(_var->next(restart)); }
 	/** +0x0c: equal to another variable (compares the values). */
-	bool eq(const VarRef &other) const;
-
+	bool eq(const VarRef &other) const { return _var->eq(*other._var); }
+	/** +0x3c: the value as text. */
+	Common::String toString() const { return _var->toString(); }
+	/** +0x28: assigns a text. */
+	void assignString(const Common::String &s) { _var->assignString(s); }
 	/** +0x54: v++ (the original returns a copy of the old value, discarded by the game). */
-	void postIncrement() { callCopySlot(0x54); }
+	void postIncrement() { _var->increment(); }
 	/** +0x5c: v-- */
-	void postDecrement() { callCopySlot(0x5c); }
-	/** Deprecated name: getString(0x54, x) is postIncrement(), getString(0x5c, x) postDecrement(). */
-	Common::String getString(uint32 slot, int32) { callCopySlot(slot); return Common::String(); }
-
-	/** Calls a method returning a variable by value (hidden first argument), and destroys the copy. */
-	void callCopySlot(uint32 slot);
-
-	/** Calls the method at vtable offset slot with this variable as this. */
-	uint32 callSlot(uint32 slot, uint32 nargs = 0, const uint32 *args = nullptr) const;
+	void postDecrement() { _var->decrement(); }
 
 private:
-	Machine *_machine = nullptr;
-	uint32 _addr = 0;
+	GameVar *_var = nullptr;
 };
 
 /**
@@ -109,6 +102,22 @@ protected:
 	void post(uint16 target, uint16 msg, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0);
 	/** FUN_00476b40 */
 	int32 cmd(uint16 target, int32 command, uint16 child, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0);
+	/** cmd 9: an animation sends trigger when it shows frame (FUN_00481b50). */
+	void cmdFrameTrigger(uint16 target, uint16 child, int32 frame, const Message &trigger);
+	/** FUN_00476bc0 / FUN_00476c50: a message or command to send later (target kSelf: this object). */
+	Message makeMsg(uint16 target, uint16 msg, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0) const;
+	Message makeCmd(uint16 target, int32 command, uint16 child, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0) const;
+	/** Vtable slot 7 of the objects (FUN_00476a40): draws the screen now. */
+	void redrawNow();
+	/** FUN_00476a30: unloads all children of the object. */
+	void unloadChildren();
+	/** FUN_004771c0 / FUN_004771e0: saves / loads the game (version 0x10100). */
+	bool saveGame(const Common::String &file);
+	bool loadGame(const Common::String &file);
+	/** FUN_00477200 */
+	void quitGame();
+	/** +0x18: which key events the object receives. */
+	void setEventMask(uint32 mask);
 	/** cmd() with a string as p1 (text commands 0xd and 0xf). */
 	int32 cmdString(uint16 target, int32 command, uint16 child, const Common::String &str, int32 p2 = 0, int32 p3 = 0);
 	/** FUN_00477050 */

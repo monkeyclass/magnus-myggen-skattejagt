@@ -461,7 +461,9 @@ void Anim::handleCommand(Message &msg) {
 		break;
 	case kCmdSetClip:
 		// FUN_00481b50: p2 is a message the game allocated for us.
-		if (msg.p2) {
+		if (msg.trigger) {
+			setFrameTrigger(msg.p1, msg.trigger);
+		} else if (msg.p2) {
 			Message t;
 			g_engine->_machine->readMessage(msg.p2, t);
 			g_engine->_machine->mem().free(msg.p2);
@@ -1103,7 +1105,9 @@ void TextSprite::handleCommand(Message &msg) {
 	switch (msg.cmd) {
 	case 0xd: {
 		// Font: name, size (tenths of a point), style; 0 / -1 keep the current one.
-		if (msg.p1)
+		if (msg.text)
+			_font = msg.text;
+		else if (msg.p1)
 			_font = g_engine->_machine->mem().readString(msg.p1);
 		if (msg.p2)
 			_size = msg.p2;
@@ -1116,7 +1120,9 @@ void TextSprite::handleCommand(Message &msg) {
 		setSource(((uint32)(msg.p2 & 0xffff) << 16) | (msg.p1 & 0xffff));
 		break;
 	case 0xf:
-		if (msg.p1)
+		if (msg.text)
+			setText(msg.text);
+		else if (msg.p1)
 			setText(g_engine->_machine->mem().readString(msg.p1));
 		break;
 	case 0x10:

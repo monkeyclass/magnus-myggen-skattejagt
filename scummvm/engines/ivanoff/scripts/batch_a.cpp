@@ -33,40 +33,6 @@ namespace Ivanoff {
 
 namespace {
 
-/** Import address table slots of the Win32 functions the settings code calls. */
-enum {
-	kIatRegQueryValueExA = 0x4b4000,
-	kIatRegCloseKey = 0x4b4004,
-	kIatRegOpenKeyExA = 0x4b4014,
-	kIatFreeSid = 0x4b4018,
-	kIatGetProcAddress = 0x4b4294,
-	kIatLoadLibraryA = 0x4b429c,
-	kIatCloseHandle = 0x4b42a0,
-	kIatFreeLibrary = 0x4b42a4,
-	kIatCreateFileA = 0x4b42a8,
-	kIatCreateDirectoryA = 0x4b42ac,
-	kIatLocalAlloc = 0x4b42b0,
-	kIatLocalFree = 0x4b42b4,
-	kIatGetPrivateProfileStringA = 0x4b42b8,
-	kIatGetModuleFileNameA = 0x4b42bc,
-	kIatGetPrivateProfileIntA = 0x4b42c8,
-	kIatWritePrivateProfileStringA = 0x4b42cc,
-	kIatOpenFile = 0x4b42e0
-};
-
-/** Functions and data of the original's runtime (MFC) and engine. */
-enum {
-	kCStringFromSz = 0x49ff33,   ///< CString::CString(LPCSTR)
-	kCStringDtor = 0x49fec5,     ///< CString::~CString
-	kCStringFormat = 0x49f000,   ///< CString::Format (cdecl)
-	kCStringEmpty = 0x4c70b0,    ///< afxEmptyString's data
-	kRedrawNow = 0x476a40,       ///< vtable slot 7 of the objects
-	kSaveGame = 0x4771c0,
-	kLoadGame = 0x4771e0,
-	kQuitGame = 0x477200,
-	kEmptyText = 0x4caa4c        ///< an empty string of the game's data
-};
-
 /** Globals of the original. */
 enum {
 	kGlobSettings = 0x4cab98,    ///< the settings object
@@ -83,251 +49,11 @@ enum {
 	kGlobNextRoom = 0x4cab70
 };
 
-const char *const kRegistryKey = "Software\\IVANOFF Interactive\\MM2";
-
-/**
- * Native temporaries in emulated memory (strings and buffers passed to the
- * original's functions) live in a scratch area of their own, not in the
- * game's heap: the heap's layout shows in the traces (some objects pass
- * heap addresses), and it must stay the same as with the original code.
- * The area is a stack: temporaries are released in reverse order.
- */
-class Scratch {
-public:
-	static uint32 alloc(Machine &m, uint32 size) {
-		if (!m.mem().isMapped(kStart))
-			m.mem().map(kStart, kSize);
-		uint32 a = kStart + _used;
-		size = (MAX<uint32>(size, 1) + 7) & ~7;
-		if (_used + size > kSize)
-			error("Scratch: out of memory");
-		_used += size;
-		m.mem().fill(a, 0, size);
-		return a;
-	}
-	static void release(uint32 addr) {
-		assert(addr >= kStart && addr - kStart <= _used);
-		_used = addr - kStart;
-	}
-private:
-	static const uint32 kStart = 0x0f400000;
-	static const uint32 kSize = 0x10000;
-	static uint32 _used;
-};
-
-uint32 Scratch::_used = 0;
-
-/** A zero-terminated string in emulated memory, for as long as it lives. */
-class EmuString {
-public:
-	EmuString(Machine &m, const Common::String &s) {
-		_addr = Scratch::alloc(m, s.size() + 1);
-		m.mem().writeString(_addr, s);
-	}
-	~EmuString() { Scratch::release(_addr); }
-	uint32 addr() const { return _addr; }
-private:
-	uint32 _addr;
-};
-
-/** A zeroed buffer in emulated memory, for as long as it lives. */
-class EmuBuffer {
-public:
-	EmuBuffer(Machine &m, uint32 size) { _addr = Scratch::alloc(m, size); }
-	~EmuBuffer() { Scratch::release(_addr); }
-	uint32 addr() const { return _addr; }
-private:
-	uint32 _addr;
-};
-
-/**
- * A block of the game's heap for as long as it lives (the strdup() copies
- * of file names the original passes to loadGame and saveGame).
- */
-class HeapString {
-public:
-	HeapString(Machine &m, const Common::String &s) : _m(m) { _addr = m.mem().allocString(s); }
-	~HeapString() { _m.mem().free(_addr); }
-	uint32 addr() const { return _addr; }
-private:
-	Machine &_m;
-	uint32 _addr;
-};
-
-/** Calls a Win32 function of the emulation through the import address table. */
-uint32 win32(Machine &m, uint32 iat, uint32 nargs, const uint32 *args) {
-	return m.cpu().call(m.mem().r32(iat), 0, nargs, args);
-}
-
 bool endsWithBackslash(const Common::String &s) {
 	return !s.empty() && s.lastChar() == '\\';
 }
 
 } // End of anonymous namespace
-
-/**
- * The original's std::string (MSVC 5/6: allocator byte, data, length,
- * capacity; the data is preceded by a reference count byte, 0xff for a
- * string that can't be shared) with its buffer in the game's heap: the
- * settings code keeps its strings where the original does, so that the
- * heap evolves exactly as with the original (FUN_0040f750-FUN_0040fa60,
- * FUN_004589d0, FUN_00458be0, FUN_00475f00, FUN_00475f80, FUN_00476060,
- * FUN_00476190).
- */
-class StdString {
-public:
-	explicit StdString(Machine &m) : _m(m) {}
-	StdString(Machine &m, const Common::String &s) : _m(m) { assign(s); }
-	/** A view of a string of the original at addr (not owned). */
-	static StdString view(Machine &m, uint32 addr) {
-		StdString v(m);
-		v._ptr = m.mem().r32(addr + 4);
-		v._len = m.mem().r32(addr + 8);
-		v._cap = m.mem().r32(addr + 0xc);
-		v._owned = false;
-		return v;
-	}
-	StdString(const StdString &v) : _m(v._m), _ptr(v._ptr), _len(v._len), _cap(v._cap), _owned(false) {
-		assert(!v._owned);
-	}
-	~StdString() {
-		if (_owned)
-			release();
-	}
-
-	uint32 size() const { return _len; }
-	bool empty() const { return _len == 0; }
-	/** The text's address, or that of an empty string. */
-	uint32 cstr() const { return _ptr ? _ptr : (uint32)kEmptyText; }
-	Common::String text() const { return _ptr ? _m.mem().readString(_ptr, _len) : Common::String(); }
-	char lastChar() const { return _len ? (char)_m.mem().r8(_ptr + _len - 1) : 0; }
-
-	/** Sets the text (FUN_0040f8c0 with "assign", then the copy). */
-	void assign(const Common::String &s) {
-		if (reserve(s.size(), true))
-			setText(0, s);
-	}
-
-	/** Appends (FUN_0040f8c0 without "assign", then the copy); nothing for "". */
-	void append(const Common::String &s) {
-		if (s.empty())
-			return;
-		if (reserve(_len + s.size(), false))
-			setText(_len, s);
-	}
-
-	/** Copies another string (FUN_004589d0): shares its buffer when possible. */
-	void copyFrom(const StdString &o) {
-		if (o._len != 0 && refCount(o._ptr) < 0xfe) {
-			release();
-			_ptr = o._ptr;
-			_len = o._len;
-			_cap = o._cap;
-			_m.mem().w8(_ptr - 1, refCount(_ptr) + 1);
-			return;
-		}
-		assign(o.text());
-	}
-
-	/** Makes the buffer unshared and marks it not shareable (FUN_00475f00). */
-	void lock() {
-		if (_ptr && !unique())
-			reserve(_len, false);
-		if (_ptr)
-			_m.mem().w8(_ptr - 1, 0xff);
-	}
-
-	/** Frees the buffer, or drops this reference to a shared one (FUN_0040f850). */
-	void release() {
-		if (_ptr) {
-			byte ref = refCount(_ptr);
-			if (ref == 0 || ref == 0xff)
-				_m.mem().free(_ptr - 1);
-			else
-				_m.mem().w8(_ptr - 1, ref - 1);
-		}
-		_ptr = _len = _cap = 0;
-	}
-
-	/** Shares the buffer into an empty string of the original at addr. */
-	void storeTo(uint32 addr) {
-		StdString target(_m);
-		target.copyFrom(*this);
-		Emu::Memory &mem = _m.mem();
-		mem.w32(addr + 4, target._ptr);
-		mem.w32(addr + 8, target._len);
-		mem.w32(addr + 0xc, target._cap);
-		target._ptr = target._len = target._cap = 0;
-	}
-
-private:
-	byte refCount(uint32 ptr) const { return _m.mem().r8(ptr - 1); }
-	bool unique() const {
-		if (!_ptr)
-			return true;
-		byte ref = refCount(_ptr);
-		return ref == 0 || ref == 0xff;
-	}
-
-	void setText(uint32 pos, const Common::String &s) {
-		_m.mem().write(_ptr + pos, s.c_str(), s.size());
-		_len = pos + s.size();
-		_m.mem().w8(_ptr + _len, 0);
-	}
-
-	/** FUN_0040f9e0: a new buffer for n characters, keeping the text. */
-	void grow(uint32 n) {
-		Emu::Memory &mem = _m.mem();
-		uint32 cap = n | 0x1f;
-		if (cap > 0xfffffffd)
-			cap = n;
-		uint32 block = mem.alloc(cap + 2);
-		uint32 keep = MIN(_len, n);
-		for (uint32 i = 0; i < keep; i++)
-			mem.w8(block + 1 + i, mem.r8(_ptr + i));
-		release();
-		mem.w8(block, 0);
-		_ptr = block + 1;
-		_cap = cap;
-		_len = keep;
-		mem.w8(_ptr + _len, 0);
-	}
-
-	/** FUN_0040f8c0: room for n characters; false when n is 0. */
-	bool reserve(uint32 n, bool assigning) {
-		if (unique()) {
-			if (n == 0) {
-				if (assigning) {
-					release();
-				} else if (_ptr) {
-					_len = 0;
-					_m.mem().w8(_ptr, 0);
-				}
-				return false;
-			}
-			if (assigning) {
-				if (_cap > 0x1f || _cap < n) {
-					release();
-					grow(n);
-				}
-			} else if (n > _cap) {
-				grow(n);
-			}
-			return true;
-		}
-		if (n == 0) {
-			_m.mem().w8(_ptr - 1, refCount(_ptr) - 1);
-			_ptr = _len = _cap = 0;
-			return false;
-		}
-		grow(n);
-		return true;
-	}
-
-	Machine &_m;
-	uint32 _ptr = 0, _len = 0, _cap = 0;
-	bool _owned = true;
-};
 
 /**
  * The settings (the class at 0x474410-0x476190, DAT_004cab98): an INI file
@@ -358,19 +84,16 @@ public:
 	}
 
 	/** FUN_00474780: a value of HKLM\\Software\\IVANOFF Interactive\\MM2, or "". */
-	void gameRegString(StdString &out, const Common::String &value) {
+	Common::String gameRegString(const Common::String &value) {
 		Common::String name = value;
 		name.toLowercase();
-		out.assign(_m.registryValue("80000002\\software\\ivanoff interactive\\mm2\\" + name));
+		return _m.registryValue("80000002\\software\\ivanoff interactive\\mm2\\" + name);
 	}
 
 	/** FUN_00474650: the folder of the save games. */
-	void saveDir(StdString &out, bool) {
-		out.assign(kDir);
+	Common::String saveDir() {
+		return kDir;
 	}
-
-	/** FUN_00474700: creates the file if it doesn't exist; the save game writes it anyway. */
-	void createFile(StdString &) {}
 
 private:
 	static const char *const kDir;
@@ -416,8 +139,7 @@ protected:
 
 	class HeapMessage {
 	public:
-		HeapMessage(Machine &m) : _m(m) { _addr = m.mem().alloc(0x2c); }
-		~HeapMessage() { _m.mem().free(_addr); }
+		HeapMessage(Machine &m) : _m(m), _addr(0) {}
 	private:
 		Machine &_m;
 		uint32 _addr;
@@ -426,52 +148,26 @@ protected:
 	GameSettings settings() { return GameSettings(machine(), global32(kGlobSettings)); }
 
 	/** The object's +0x18 field: the key events it receives. */
-	void setEventMask(uint32 mask) { machine().mem().w32(self() + 0x18, mask); }
 
 	/** Vtable slot 7 of the objects (FUN_00476a40). */
-	void redrawNow() { callGame(kRedrawNow); }
 
 	/** The global sound volume (DAT_004c6940). */
-	void setVolumeGlobal(int32 level) { machine().mem().w16(kGlobVolume, (uint16)(level * 0x101)); }
+	void setVolumeGlobal(int32 level) { setGlobal32(kGlobVolume, (uint16)(level * 0x101)); }
 
 	/** Variable slot +0x3c: the text of a string variable. */
 	Common::String varString(const VarRef &v) {
-		Emu::Memory &mem = machine().mem();
-		EmuBuffer cell(machine(), 4);
-		uint32 out = cell.addr();
-		v.callSlot(0x3c, 1, &out);
-		Common::String s = mem.readString(mem.r32(out));
-		machine().cpu().call(kCStringDtor, out);
-		return s;
+		return v.toString();
 	}
 
 	/** Variable slot +0x28: assigns a string (a CString by value, released by the callee). */
 	void assignString(VarRef v, const Common::String &s) {
-		Emu::Memory &mem = machine().mem();
-		EmuString str(machine(), s);
-		EmuBuffer cell(machine(), 4);
-		machine().cpu().call(kCStringFromSz, cell.addr(), str.addr());
-		uint32 arg = mem.r32(cell.addr());
-		v.callSlot(0x28, 1, &arg);
+		v.assignString(s);
 	}
 
 	/** CString::Format of the original runtime, with two integers. */
 	Common::String formatInts(const Common::String &fmt, int32 a, int32 b) {
-		Emu::Memory &mem = machine().mem();
-		EmuString f(machine(), fmt);
-		EmuBuffer cell(machine(), 4);
-		mem.w32(cell.addr(), mem.r32(kCStringEmpty));
-		uint32 args[4] = { cell.addr(), f.addr(), (uint32)a, (uint32)b };
-		machine().cpu().call(kCStringFormat, 0, 4, args);
-		Common::String s = mem.readString(mem.r32(cell.addr()));
-		machine().cpu().call(kCStringDtor, cell.addr());
-		return s;
-	}
-
-	/** saveGame / loadGame (FUN_004771c0 / FUN_004771e0) with a file name. */
-	uint32 saveOrLoad(uint32 fn, const HeapString &path) {
-		uint32 args[2] = { path.addr(), 0x10100 };
-		return callGame(fn, 2, args);
+		// CString::Format of the original runtime (the format comes from the game's texts).
+		return Common::String::format(fmt.c_str(), a, b);
 	}
 
 	/** Restores a palette saved by kCmdUsePalette ((child << 16) | object, 0 for none). */
@@ -581,10 +277,7 @@ private:
 		var(0xb8, 4).set(music > 0);
 		static const char *const kLinks[3] = { "WWWAstronomyLink", "WWWElementsLink", "WWWStarLink" };
 		for (int i = 0; i < 3; i++) {
-			StdString found(machine());
-			s.gameRegString(found, kLinks[i]);
-			Common::String link = found.text();
-			found.release();
+			Common::String link = s.gameRegString(kLinks[i]);
 			if (!link.empty())
 				assignString(var(9 + i), link);
 		}
@@ -842,20 +535,19 @@ public:
 private:
 	/** Posts the message given when the screen was opened. */
 	void postNext() {
-		uint16 target = machine().mem().r16(kGlobNextTarget);
+		uint16 target = (uint16)global32(kGlobNextTarget);
 		if (target != 0)
 			post(target, (uint16)global32(kGlobNextMsg));
 	}
 
 	void setNext(const Message &msg) {
-		machine().mem().w16(kGlobNextTarget, (uint16)msg.p1);
+		setGlobal32(kGlobNextTarget, (uint16)msg.p1);
 		setGlobal32(kGlobNextMsg, msg.p2);
 	}
 
-	/** The save folder, with a final backslash (dir keeps the original's copy). */
-	Common::String saveDir(StdString &dir) {
-		settings().saveDir(dir, false);
-		Common::String path = dir.text();
+	/** The save folder, with a final backslash. */
+	Common::String saveDir() {
+		Common::String path = settings().saveDir();
 		if (!endsWithBackslash(path))
 			path += "\\";
 		return path;
@@ -865,7 +557,7 @@ private:
 		setNext(msg);
 		if (var(0x24).get() == 0) {
 			if (var(1, kGameState).get() == 0x28 || var(1, kGameState).get() == 0x2a) {
-				if (machine().mem().r16(kGlobNextTarget) == 0)
+				if ((uint16)global32(kGlobNextTarget) == 0)
 					cmd(kSpeech, kCmdPlay, 0x717);
 			}
 		}
@@ -940,13 +632,12 @@ private:
 		for (int32 slot = 1; slot <= 16; slot++)
 			var(0x22).at(slot).set(0);
 
-		StdString dirStr(machine());
-		Common::String dir = saveDir(dirStr);
+		Common::String dir = saveDir();
 		GameSettings s = settings();
 		int32 count = 0;
 		for (int32 slot = 1; slot <= 16; slot++) {
 			uint16 label = 0xb33 + slot - 1;
-			cmd(kSelf, kCmdSetText, label, kEmptyText);
+			cmdString(kSelf, kCmdSetText, label, "");
 			Common::String name = Common::String::format("SavedGame%i", slot);
 			int32 room = s.getInt(name, 0);
 			Common::String file = dir + name + ".m2s";
@@ -967,8 +658,7 @@ private:
 			cmd(kSelf, kCmdPlay, id);
 			cmd(kSelf, kCmdSetPos, id, (int16)pos, (int16)(pos >> 16), 0x520d);
 			Common::String text = formatInts(varString(var(0x25)), slot, time);
-			EmuString t(machine(), text);
-			cmd(kSelf, kCmdSetText, label, t.addr());
+			cmdString(kSelf, kCmdSetText, label, text);
 			count++;
 		}
 		setCursor(0);
@@ -977,24 +667,19 @@ private:
 
 	/** OpenFile(OF_EXIST) */
 	bool fileExists(const Common::String &path) {
-		EmuString p(machine(), path);
-		EmuBuffer ofs(machine(), 0x88);
-		uint32 args[3] = { p.addr(), ofs.addr(), 0x4000 };
-		return win32(machine(), kIatOpenFile, 3, args) != 0xffffffff;
+		return machine().fileExists(path);
 	}
 
 	void load(int32 slot) {
-		StdString dirStr(machine());
-		Common::String file = saveDir(dirStr) + Common::String::format("SavedGame%i", slot) + ".m2s";
+		Common::String file = saveDir() + Common::String::format("SavedGame%i", slot) + ".m2s";
 		loadFile(file);
 		setCursor(0);
 	}
 
 	void loadFile(const Common::String &file) {
-		HeapString path(machine(), file);
 		int32 oldRoom = var(1, kGameState).get();
 		setCursor(kCursorWait);
-		if (saveOrLoad(kLoadGame, path) == 0)
+		if (!loadGame(file))
 			return;
 		int32 room = var(1, kGameState).get();
 		if (cmd(0xb, kCmdIsPlaying, 0x559) == 0 && room != 0x3e && room != 0x28 &&
@@ -1013,17 +698,13 @@ private:
 	}
 
 	void save(int32 slot, int32 roomIdx) {
-		StdString dirStr(machine());
-		Common::String dir = saveDir(dirStr);
+		Common::String dir = saveDir();
 		GameSettings s = settings();
 		Common::String name = Common::String::format("SavedGame%i", slot);
 		s.setInt(name, roomIdx);
 		Common::String file = dir + name + ".m2s";
 		s.setInt(Common::String::format("SavedGameTime%i", slot), var(5, kGameState).get());
-		HeapString path(machine(), file);
-		StdString arg(machine(), file);
-		s.createFile(arg);
-		saveOrLoad(kSaveGame, path);
+		saveGame(file);
 	}
 
 	void click(Message &msg) {
@@ -1136,7 +817,7 @@ public:
 			send(kGameState, 0x14, 1);
 			var(1).set(global32(kGlobNextRoom));
 			send(kBroadcast, kMsgEnter, global32(kGlobNextRoom), old);
-			send(machine().mem().r16(kGlobNextRoom), kMsgEntered, old);
+			send((uint16)global32(kGlobNextRoom), kMsgEntered, old);
 			break;
 		}
 		case 10:
@@ -1259,15 +940,7 @@ private:
 			// The end: save the settings and quit.
 			send(kBroadcast, 0x1a);
 			cmd(kBroadcast, kCmdUnload, 0);
-			uint32 obj = global32(kGlobSettings);
-			if (obj != 0) {
-				// its scalar deleting destructor
-				Emu::Memory &mem = machine().mem();
-				uint32 one = 1;
-				machine().cpu().call(mem.r32(mem.r32(obj)), obj, 1, &one);
-			}
-			setGlobal32(kGlobSettings, 0);
-			callGame(kQuitGame);
+			quitGame();
 			break;
 		}
 		case 0x2c3:

@@ -173,12 +173,17 @@ int32 World::deliverCommand(GameObject *from, Message &msg) {
 	if (gDebugLevel >= 4) {
 		// Text commands pass strings: print them, not their (varying) addresses.
 		Emu::Memory &mem = g_engine->_machine->mem();
-		if (msg.cmd == 9 && msg.p2 && mem.isMapped(msg.p2)) {
-			// Frame triggers pass a message the game allocated.
+		if (msg.cmd == 9 && (msg.trigger || (msg.p2 && mem.isMapped(msg.p2)))) {
+			// Frame triggers pass a message.
 			Message t;
-			g_engine->_machine->readMessage(msg.p2, t);
+			if (msg.trigger)
+				t = *msg.trigger;
+			else
+				g_engine->_machine->readMessage(msg.p2, t);
 			debug(4, "cmd %d -> %d.%d (%d, [%d %d %d %d (%d, %d, %d)], %d)", msg.cmd, msg.target, msg.msg, msg.p1,
 			      t.target, t.mode, t.cmd, t.msg, t.p1, t.p2, t.p3, msg.p3);
+		} else if ((msg.cmd == 0xd || msg.cmd == 0xf) && msg.text) {
+			debug(4, "cmd %d -> %d.%d (\"%s\", %d, %d)", msg.cmd, msg.target, msg.msg, Common::String(msg.text).substr(0, 255).c_str(), msg.p2, msg.p3);
 		} else if ((msg.cmd == 0xd || msg.cmd == 0xf) && msg.p1 && mem.isMapped(msg.p1))
 			debug(4, "cmd %d -> %d.%d (\"%s\", %d, %d)", msg.cmd, msg.target, msg.msg, mem.readString(msg.p1, 256).c_str(), msg.p2, msg.p3);
 		else

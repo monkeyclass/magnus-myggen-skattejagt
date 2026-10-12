@@ -66,26 +66,9 @@ const int32 kPlayOnce = (int32)0x8000c001;
  */
 class HeapBlock {
 public:
-	HeapBlock(Machine &m) : _m(m) { _addr = m.mem().alloc(0x2c); }
-	~HeapBlock() { _m.mem().free(_addr); }
+	HeapBlock(Machine &m) : _m(m), _addr(0) {}
 private:
 	Machine &_m;
-	uint32 _addr;
-};
-
-/** A local variable of the original handler on the interpreter's stack. */
-class StackSlot {
-public:
-	StackSlot(Machine &m, uint32 size) : _m(m), _size(size) {
-		_m.cpu().r[Emu::ESP] -= size;
-		_addr = _m.cpu().r[Emu::ESP];
-		_m.mem().w32(_addr, 0);
-	}
-	~StackSlot() { _m.cpu().r[Emu::ESP] += _size; }
-	uint32 addr() const { return _addr; }
-private:
-	Machine &_m;
-	uint32 _size;
 	uint32 _addr;
 };
 
@@ -123,23 +106,17 @@ protected:
 
 	/** Var slots 0x54 / 0x5c (v++ / v--), the temporary copy on the stack. */
 	void postStep(VarRef v, uint32 slot) {
-		StackSlot tmp(this->machine(), 0x20);
-		uint32 arg = tmp.addr();
-		v.callSlot(slot, 1, &arg);
-		this->machine().cpu().call(kCStringFree, tmp.addr() + 0xc);
+		if (slot == 0x54)
+			v.postIncrement();
+		else
+			v.postDecrement();
 	}
 	void postIncrement(VarRef v) { postStep(v, 0x54); }
 	void postDecrement(VarRef v) { postStep(v, 0x5c); }
 
 	/** Writes the object's event mask (+0x18). */
 	void setEventMask(uint32 mask) {
-		this->machine().mem().w32(this->self() + 0x18, mask);
-	}
-
-	/** FUN_00476bc0: a message on the game's heap (for kCmdFrameTrigger). */
-	int32 newMsg(uint16 target, uint16 msg, int32 p1 = 0, int32 p2 = 0, int32 p3 = 0) {
-		const uint32 args[5] = { target, msg, (uint32)p1, (uint32)p2, (uint32)p3 };
-		return (int32)this->callGame(kNewMessage, 5, args);
+		Script::setEventMask(mask);
 	}
 
 	bool isRunning(uint16 target, uint16 child) {
@@ -775,7 +752,7 @@ private:
 	void playWithTrigger(uint16 child, uint16 copy, int32 p1) {
 		uint16 c = isRunning(kSelf, child) ? copy : child;
 		cmd(kSelf, kCmdFrameTrigger, c, 0x2c, 0);
-		cmd(kSelf, kCmdFrameTrigger, c, 0x2c, newMsg(0x34, kMsgGame));
+		cmdFrameTrigger(kSelf, c, 0x2c, makeMsg(0x34, kMsgGame));
 		cmd(kSelf, kCmdPlay, c, p1, kPlayOnce);
 	}
 
@@ -1604,7 +1581,7 @@ private:
 			} else if (msg.p1 == 2) {
 				cmd(kSelf, kCmdStop, 0x587);
 				cmd(kSelf, kCmdPlay, 0x588);
-				callGame(kRedrawNow);
+				redrawNow();
 				gotoRoom(0x3e);
 			}
 			break;

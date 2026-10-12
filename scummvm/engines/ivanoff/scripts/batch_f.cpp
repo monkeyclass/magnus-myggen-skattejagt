@@ -23,6 +23,8 @@
 // their room (variable 1 of the game state object).
 
 #include "ivanoff/machine.h"
+#include "common/system.h"
+
 #include "ivanoff/scripts/scripts.h"
 
 namespace Ivanoff {
@@ -68,33 +70,16 @@ protected:
 		cmd(item, kCmdStop, sprite);
 	}
 
-	/**
-	 * CTime::GetCurrentTime() (FUN_0049ebbc), run in the interpreter: the
-	 * original's CRT time functions keep state (time zone, the localtime
-	 * buffer), so they are called as the original does. Returns the time.
-	 */
+	/** CTime::GetCurrentTime() (FUN_0049ebbc); only its month is used, which this returns (0-11). */
 	uint32 currentTime() {
-		Emu::CPU &cpu = machine().cpu();
-		uint32 savedEsp = cpu.r[Emu::ESP];
-		cpu.r[Emu::ESP] -= 16;
-		uint32 slot = cpu.r[Emu::ESP];
-		cpu.call(0x49ebbc, self(), 1, &slot);
-		uint32 t = machine().mem().r32(slot);
-		cpu.r[Emu::ESP] = savedEsp;
-		return t;
+		TimeDate t;
+		g_system->getTimeAndDate(t);
+		return (uint32)t.tm_mon;
 	}
 
-	/** CTime(t).GetLocalTm(NULL)->tm_mon == 11 (FUN_0049ebcf), in the interpreter. */
+	/** CTime(t).GetLocalTm(NULL)->tm_mon == 11 (FUN_0049ebcf) */
 	bool isDecember(uint32 t) {
-		Emu::CPU &cpu = machine().cpu();
-		uint32 savedEsp = cpu.r[Emu::ESP];
-		cpu.r[Emu::ESP] -= 16;
-		uint32 slot = cpu.r[Emu::ESP];
-		machine().mem().w32(slot, t);
-		uint32 tm = cpu.call(0x49ebcf, slot, 0u);
-		int32 month = (int32)machine().mem().r32(tm + 16);
-		cpu.r[Emu::ESP] = savedEsp;
-		return month == 11;
+		return t == 11;
 	}
 
 	/** The time read at the start of the message (Object25, Object43). */

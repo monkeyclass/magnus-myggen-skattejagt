@@ -60,8 +60,7 @@ protected:
 private:
 	class HeapBlock {
 	public:
-		HeapBlock(Machine &m) : _m(m) { _addr = m.mem().alloc(0x2c); }
-		~HeapBlock() { _m.mem().free(_addr); }
+		HeapBlock(Machine &m) : _m(m), _addr(0) {}
 	private:
 		Machine &_m;
 		uint32 _addr;
@@ -2774,8 +2773,8 @@ void Object61::handleMessage(Message &msg) {
 		cmd(kSelf, kCmdPlay, 0xb1d);
 		cmd(kSelf, kCmdSetPos, 0xb1d, 0xd3, 0x133, 0x271a);
 		// The original passes the address of a string of its data.
-		cmd(kSelf, kCmdSetText, 0xb1c, kAddrEmptyString);
-		cmd(kSelf, kCmdSetText, 0xb1d, kAddrEmptyString);
+		cmdString(kSelf, kCmdSetText, 0xb1c, "");
+		cmdString(kSelf, kCmdSetText, 0xb1d, "");
 		enableAll(1);
 		send(kSpeech, kMsgSay, 0x8690868, 0x3d);
 		break;
