@@ -198,3 +198,6 @@
   37, 39, 41, 42, 45, 50, 51, 54, 56-59, 62): 120 new runs, all identical to the original. Handler coverage of the
   original code by the checks: 66% (was about 50%). The check is now 310 runs (309 identical; the other is the
   original's heap exhaustion). Keyboard input is checked only as fuzzed key messages, not through the key mapping.
+- Longer fuzzing (4000 messages, with and without variable fuzzing) in the weakest rooms (26, 29, 33, 34, 43, 46,
+  57, 59): 48 runs, all identical; coverage 67%. Fuzzing is saturated: the rest of these handlers needs game state
+  that only play reaches (the climbing game 46 gets its arrow-key messages but stays at 27%).
