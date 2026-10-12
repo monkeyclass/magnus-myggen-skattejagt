@@ -83,13 +83,16 @@ bool VarRef::eq(const VarRef &other) const {
 
 void VarRef::callCopySlot(uint32 slot) {
 	// The copy is a variable object (0x1c bytes, FUN_0047cad0) with a
-	// CString at +0x0c; the caller destroys it.
-	Emu::Memory &mem = _machine->mem();
-	uint32 out = mem.alloc(0x20);
+	// CString at +0x0c. The original keeps it on the stack; so does this,
+	// which keeps the heap as the original leaves it.
+	Emu::CPU &cpu = _machine->cpu();
+	cpu.r[Emu::ESP] -= 0x20;
+	uint32 out = cpu.r[Emu::ESP];
+	_machine->mem().w32(out, 0);
 	uint32 arg = out;
 	callSlot(slot, 1, &arg);
-	_machine->cpu().call(kCStringDtor, out + 0xc);
-	mem.free(out);
+	cpu.call(kCStringDtor, out + 0xc);
+	cpu.r[Emu::ESP] += 0x20;
 }
 
 // --- Script ---
