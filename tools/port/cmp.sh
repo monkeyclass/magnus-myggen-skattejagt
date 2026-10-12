@@ -1,6 +1,6 @@
 #!/bin/sh
 # usage: cmp.sh A B -> compares the traces of runs with prefixes A and B; prints the first difference
-f() { grep -v "^Using configuration\|native logic\|^Machine:\|^Files:\|^SetupBuilder\|^TextSprite \|^WritePrivateProfileString" $1; }
+f() { grep -v "^Using configuration\|native logic\|^Machine:\|^Files:\|^SetupBuilder\|^HardwareInput\|^Not opening \|^TextSprite \|^WritePrivateProfileString" $1; }
 same=0; diff=0
 for a in /tmp/claude-0/det/$1*.log; do
 	n=${a#/tmp/claude-0/det/$1}; b=/tmp/claude-0/det/$2$n
