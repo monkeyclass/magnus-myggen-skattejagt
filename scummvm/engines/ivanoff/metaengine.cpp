@@ -19,6 +19,9 @@
  *
  */
 
+#include "backends/keymapper/action.h"
+#include "backends/keymapper/keymap.h"
+#include "backends/keymapper/standard-actions.h"
 #include "common/translation.h"
 
 #include "ivanoff/metaengine.h"
@@ -60,6 +63,52 @@ Common::Error IvanoffMetaEngine::createInstance(OSystem *syst, Engine **engine, 
 bool IvanoffMetaEngine::hasFeature(MetaEngineFeature f) const {
 	return checkExtendedSaves(f) ||
 		(f == kSupportsLoadingDuringStartup);
+}
+
+Common::KeymapArray IvanoffMetaEngine::initKeymaps(const char *target) const {
+	using namespace Common;
+
+	Keymap *keymap = new Keymap(Keymap::kKeymapTypeGame, "ivanoff-default", _("Default keymappings"));
+	Action *act;
+
+	act = new Action(kStandardActionLeftClick, _("Interact"));
+	act->setLeftClickEvent();
+	act->addDefaultInputMapping("MOUSE_LEFT");
+	act->addDefaultInputMapping("JOY_A");
+	keymap->addAction(act);
+
+	act = new Action(kStandardActionRightClick, _("Right click"));
+	act->setRightClickEvent();
+	act->addDefaultInputMapping("MOUSE_RIGHT");
+	act->addDefaultInputMapping("JOY_B");
+	keymap->addAction(act);
+
+	// The custom events are the Windows virtual key codes the game reads.
+	static const struct {
+		const char *id;
+		const char *label;
+		int vk;
+		const char *key, *joy;
+	} kKeys[] = {
+		{ "MENU", _s("Menu / skip"), 0x1b, "ESCAPE", "JOY_X" },
+		{ "UP", _s("Up"), 0x26, "UP", "JOY_UP" },
+		{ "DOWN", _s("Down"), 0x28, "DOWN", "JOY_DOWN" },
+		{ "LEFT", _s("Left"), 0x25, "LEFT", "JOY_LEFT" },
+		{ "RIGHT", _s("Right"), 0x27, "RIGHT", "JOY_RIGHT" },
+		{ "SPACE", _s("Space"), 0x20, "SPACE", "JOY_Y" },
+		{ "LOAD", _s("Load screen"), 0x74, "F5", nullptr },
+		{ "SAVE", _s("Save screen"), 0x75, "F6", nullptr }
+	};
+	for (uint i = 0; i < ARRAYSIZE(kKeys); i++) {
+		act = new Action(kKeys[i].id, _(kKeys[i].label));
+		act->setCustomEngineActionEvent(kKeys[i].vk);
+		act->addDefaultInputMapping(kKeys[i].key);
+		if (kKeys[i].joy)
+			act->addDefaultInputMapping(kKeys[i].joy);
+		keymap->addAction(act);
+	}
+
+	return Keymap::arrayOf(keymap);
 }
 
 #if PLUGIN_ENABLED_DYNAMIC(IVANOFF)

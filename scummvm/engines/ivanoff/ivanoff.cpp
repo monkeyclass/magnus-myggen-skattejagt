@@ -164,6 +164,15 @@ Common::Error IvanoffEngine::run() {
 			case Common::EVENT_KEYUP:
 				onKey(e.kbd.keycode, e.kbd.ascii, false);
 				break;
+			case Common::EVENT_CUSTOM_ENGINE_ACTION_START:
+			case Common::EVENT_CUSTOM_ENGINE_ACTION_END: {
+				// A key of the keymap: customType is the virtual key code.
+				int vk = e.customType;
+				Message m(kSelf, 0, e.type == Common::EVENT_CUSTOM_ENGINE_ACTION_START ? kMsgKeyDown : kMsgKeyUp,
+				          vk, vk == 0x20 || vk == 0x1b ? vk : 0);
+				_world->deliverFiltered(m);
+				break;
+			}
 			default:
 				break;
 			}
@@ -432,6 +441,12 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 		} else if (!strcmp(kind, "save")) {
 			// Saves to SavedGame<x>.m2s with version y.
 			_files->saveWorld(Common::String::format("C:\\MM2\\appdata\\SavedGame%u.m2s", x), y);
+		} else if (!strcmp(kind, "vk")) {
+			// A key by its Windows virtual key code (x), down and up.
+			Message d(kSelf, 0, kMsgKeyDown, x, 0);
+			_world->deliverFiltered(d);
+			Message u(kSelf, 0, kMsgKeyUp, x, 0);
+			_world->deliverFiltered(u);
 		} else if (!strcmp(kind, "gsave")) {
 			// ScummVM's save to slot x.
 			debug(1, "gsave %d: %s", x, canSaveGameStateCurrently() ? saveGameState(x, "test").getDesc().c_str() : "not now");
@@ -831,18 +846,39 @@ void IvanoffEngine::onButton(int x, int y, bool down, bool right) {
 
 void IvanoffEngine::onKey(int keycode, int ascii, bool down) {
 	// FUN_0047f940 / FUN_0047f9c0: p1 is the Windows virtual key code.
-	int vk = keycode;
-	if (keycode >= Common::KEYCODE_a && keycode <= Common::KEYCODE_z)
-		vk = keycode - Common::KEYCODE_a + 'A';
-	else if (keycode == Common::KEYCODE_ESCAPE)
-		vk = 0x1b;
-	else if (keycode == Common::KEYCODE_RETURN)
-		vk = 0x0d;
-	else if (keycode == Common::KEYCODE_SPACE)
-		vk = 0x20;
-	Message m(kSelf, 0, down ? kMsgKeyDown : kMsgKeyUp, vk, ascii);
+	Message m(kSelf, 0, down ? kMsgKeyDown : kMsgKeyUp, virtualKey(keycode), ascii);
 	_world->deliverFiltered(m);
 }
+
+int IvanoffEngine::virtualKey(int keycode) {
+	// Windows virtual key codes of the keys the game uses.
+	if (keycode >= Common::KEYCODE_a && keycode <= Common::KEYCODE_z)
+		return keycode - Common::KEYCODE_a + 'A';
+	if (keycode >= Common::KEYCODE_0 && keycode <= Common::KEYCODE_9)
+		return keycode - Common::KEYCODE_0 + '0';
+	if (keycode >= Common::KEYCODE_F1 && keycode <= Common::KEYCODE_F12)
+		return keycode - Common::KEYCODE_F1 + 0x70;
+	switch (keycode) {
+	case Common::KEYCODE_BACKSPACE: return 0x08;
+	case Common::KEYCODE_TAB: return 0x09;
+	case Common::KEYCODE_RETURN:
+	case Common::KEYCODE_KP_ENTER: return 0x0d;
+	case Common::KEYCODE_ESCAPE: return 0x1b;
+	case Common::KEYCODE_SPACE: return 0x20;
+	case Common::KEYCODE_PAGEUP: return 0x21;
+	case Common::KEYCODE_PAGEDOWN: return 0x22;
+	case Common::KEYCODE_END: return 0x23;
+	case Common::KEYCODE_HOME: return 0x24;
+	case Common::KEYCODE_LEFT: return 0x25;
+	case Common::KEYCODE_UP: return 0x26;
+	case Common::KEYCODE_RIGHT: return 0x27;
+	case Common::KEYCODE_DOWN: return 0x28;
+	case Common::KEYCODE_INSERT: return 0x2d;
+	case Common::KEYCODE_DELETE: return 0x2e;
+	default: return keycode;
+	}
+}
+
 
 // --- dragging and groups ---
 

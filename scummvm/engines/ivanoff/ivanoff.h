@@ -140,6 +140,7 @@ private:
 	void onMouseMove(int x, int y);
 	void onButton(int x, int y, bool down, bool right);
 	void onKey(int keycode, int ascii, bool down);
+	static int virtualKey(int keycode);
 
 	const ADGameDescription *_gameDescription;
 	Common::RandomSource _randomSource;
