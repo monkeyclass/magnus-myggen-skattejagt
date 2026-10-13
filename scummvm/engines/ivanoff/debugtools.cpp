@@ -34,6 +34,7 @@
 #include "common/file.h"
 #include "common/system.h"
 #include "common/tokenizer.h"
+#include "image/png.h"
 
 #include "ivanoff/ivanoff.h"
 #include "ivanoff/files.h"
@@ -196,55 +197,116 @@ void IvanoffEngine::runDebugEvents(uint32 now) {
 			return;
 		_debugEventIndex++;
 		debug(1, "Debug event %s", ev.c_str());
-		if (!strcmp(kind, "click")) {
-			_system->warpMouse(x, y);
-			onMouseMove(x, y);
-			onButton(x, y, true, false);
-			onButton(x, y, false, false);
-		} else if (!strcmp(kind, "move")) {
-			_system->warpMouse(x, y);
-			onMouseMove(x, y);
-		} else if (!strcmp(kind, "crawl")) {
-			_crawlLeft = x;
-			_crawlInterval = y ? y : 2500;
-			_crawlNext = now;
-		} else if (!strcmp(kind, "fuzz")) {
-			loadFuzzDictionary();
-			_fuzzLeft = x;
-			_fuzzInterval = y ? y : 500;
-			_fuzzNext = now;
-		} else if (!strcmp(kind, "room")) {
-			Message m(kGameState, 0, kMsgGotoRoom, x);
-			_world->deliver(nullptr, m);
-		} else if (!strcmp(kind, "dump")) {
-			Common::Array<Sprite *> list;
-			collectSprites(list);
-			for (uint i = 0; i < list.size(); i++) {
-				Sprite *sp = list[i];
-				Common::Rect r = sp->getBounds();
-				debug("visible %d.%d type %04x z %d flags %x box %d,%d-%d,%d", sp->getOwner()->getId(), sp->getId(),
-				      sp->getType(), sp->getZ(), sp->getFlags(), r.left, r.top, r.right, r.bottom);
-			}
-		} else if (!strcmp(kind, "esc")) {
-			onKey(Common::KEYCODE_ESCAPE, 27, true);
-			onKey(Common::KEYCODE_ESCAPE, 27, false);
-		} else if (!strcmp(kind, "save")) {
-			// Saves to SavedGame<x>.m2s with version y.
-			_files->saveWorld(Common::String::format("C:\\MM2\\appdata\\SavedGame%u.m2s", x), y);
-		} else if (!strcmp(kind, "vk")) {
-			// A key by its Windows virtual key code (x), down and up.
-			Message d(kSelf, 0, kMsgKeyDown, x, 0);
-			_world->deliverFiltered(d);
-			Message u(kSelf, 0, kMsgKeyUp, x, 0);
-			_world->deliverFiltered(u);
-		} else if (!strcmp(kind, "gsave")) {
-			// ScummVM's save to slot x.
-			debug(1, "gsave %d: %s", x, canSaveGameStateCurrently() ? saveGameState(x, "test").getDesc().c_str() : "not now");
-		} else if (!strcmp(kind, "gload")) {
-			debug(1, "gload %d: %s", x, canLoadGameStateCurrently() ? loadGameState(x).getDesc().c_str() : "not now");
-		} else if (!strcmp(kind, "quit")) {
-			quitGame();
+		runDebugEvent(kind, x, y, now);
+	}
+}
+
+void IvanoffEngine::runDebugEvent(const char *kind, uint x, uint y, uint32 now) {
+	if (!strcmp(kind, "click")) {
+		_system->warpMouse(x, y);
+		onMouseMove(x, y);
+		onButton(x, y, true, false);
+		onButton(x, y, false, false);
+	} else if (!strcmp(kind, "move")) {
+		_system->warpMouse(x, y);
+		onMouseMove(x, y);
+	} else if (!strcmp(kind, "crawl")) {
+		_crawlLeft = x;
+		_crawlInterval = y ? y : 2500;
+		_crawlNext = now;
+	} else if (!strcmp(kind, "fuzz")) {
+		loadFuzzDictionary();
+		_fuzzLeft = x;
+		_fuzzInterval = y ? y : 500;
+		_fuzzNext = now;
+	} else if (!strcmp(kind, "room")) {
+		Message m(kGameState, 0, kMsgGotoRoom, x);
+		_world->deliver(nullptr, m);
+	} else if (!strcmp(kind, "dump")) {
+		Common::Array<Sprite *> list;
+		collectSprites(list);
+		for (uint i = 0; i < list.size(); i++) {
+			Sprite *sp = list[i];
+			Common::Rect r = sp->getBounds();
+			debug("visible %d.%d type %04x z %d flags %x box %d,%d-%d,%d", sp->getOwner()->getId(), sp->getId(),
+			      sp->getType(), sp->getZ(), sp->getFlags(), r.left, r.top, r.right, r.bottom);
 		}
+	} else if (!strcmp(kind, "esc")) {
+		onKey(Common::KEYCODE_ESCAPE, 27, true);
+		onKey(Common::KEYCODE_ESCAPE, 27, false);
+	} else if (!strcmp(kind, "save")) {
+		// Saves to SavedGame<x>.m2s with version y.
+		_files->saveWorld(Common::String::format("C:\\MM2\\appdata\\SavedGame%u.m2s", x), y);
+	} else if (!strcmp(kind, "vk")) {
+		// A key by its Windows virtual key code (x), down and up.
+		Message d(kSelf, 0, kMsgKeyDown, x, 0);
+		_world->deliverFiltered(d);
+		Message u(kSelf, 0, kMsgKeyUp, x, 0);
+		_world->deliverFiltered(u);
+	} else if (!strcmp(kind, "gsave")) {
+		// ScummVM's save to slot x.
+		debug(1, "gsave %d: %s", x, canSaveGameStateCurrently() ? saveGameState(x, "test").getDesc().c_str() : "not now");
+	} else if (!strcmp(kind, "gload")) {
+		debug(1, "gload %d: %s", x, canLoadGameStateCurrently() ? loadGameState(x).getDesc().c_str() : "not now");
+	} else if (!strcmp(kind, "pclick") || !strcmp(kind, "prclick") || !strcmp(kind, "pmove")) {
+		// Through ScummVM's event queue, as a real mouse.
+		bool right = kind[1] == 'r';
+		Common::Event e;
+		e.mouse = Common::Point(x, y);
+		e.type = Common::EVENT_MOUSEMOVE;
+		_system->getEventManager()->pushEvent(e);
+		if (strcmp(kind, "pmove")) {
+			e.type = right ? Common::EVENT_RBUTTONDOWN : Common::EVENT_LBUTTONDOWN;
+			_system->getEventManager()->pushEvent(e);
+			e.type = right ? Common::EVENT_RBUTTONUP : Common::EVENT_LBUTTONUP;
+			_system->getEventManager()->pushEvent(e);
+		}
+	} else if (!strcmp(kind, "animdump")) {
+		// The frames of child y of object x, next to the control file.
+		GameObject *o = _world->get(x);
+		Anim *a = o ? dynamic_cast<Anim *>(o->getChild(y)) : nullptr;
+		if (a)
+			a->dumpFrames(Common::Path(ConfMan.get("debug_control")).getParent().join(Common::String::format("anim%u_%u_", x, y)).toString());
+	} else if (!strcmp(kind, "rclick")) {
+		_system->warpMouse(x, y);
+		onMouseMove(x, y);
+		onButton(x, y, true, true);
+		onButton(x, y, false, true);
+	} else if (!strcmp(kind, "shot")) {
+		// Writes a screenshot shot<x>.png next to the control file.
+		Common::Path path = Common::Path(ConfMan.get("debug_control")).getParent().join(Common::String::format("shot%u.png", x));
+		Common::DumpFile f;
+		if (f.open(path))
+			Image::writePNG(f, _screen, _palette);
+	} else if (!strcmp(kind, "quit")) {
+		quitGame();
+	}
+}
+
+void IvanoffEngine::pollDebugControl(uint32 now) {
+	// "debug_control=<file>": runs the lines added to the file while the
+	// game runs (kind:x,y as in debug_events, without the time), so that a
+	// tester can play by script and screenshots.
+	if (now - _controlPolled < 100)
+		return;
+	_controlPolled = now;
+	Common::File f;
+	if (!f.open(Common::FSNode(Common::Path(ConfMan.get("debug_control")))))
+		return;
+	uint line = 0;
+	while (!f.eos() && !f.err()) {
+		Common::String l = f.readLine();
+		if (l.empty())
+			continue;
+		if (line++ < _controlLines)
+			continue;
+		_controlLines++;
+		uint x = 0, y = 0;
+		char kind[16] = { 0 };
+		if (sscanf(l.c_str(), "%15[a-z]:%u,%u", kind, &x, &y) < 1)
+			continue;
+		debug(1, "Control %s at %u", l.c_str(), now);
+		runDebugEvent(kind, x, y, now);
 	}
 }
 

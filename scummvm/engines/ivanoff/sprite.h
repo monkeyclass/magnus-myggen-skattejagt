@@ -252,6 +252,8 @@ public:
 	uint32 getRevision() const override { return _frame; }
 	bool isPaused() const override { return _paused; }
 	int currentFrame() const { return _frame; }
+	/** Debugging aid: writes each frame as <prefix><n>.png. */
+	void dumpFrames(const Common::String &prefix);
 	void gotoFrame(int frame);
 
 	/** Commands 0xb / 0xc */
@@ -293,7 +295,7 @@ protected:
 	byte _palette[256 * 3];
 	int _frame = 0;
 	int _endFrame = 0;
-	bool _reverse = false;
+	bool _hideAtEnd = false; ///< a negative end frame: stopped at the end
 	bool _playing = false;
 	bool _paused = false;
 	uint32 _period = 50; ///< ms per frame; FLC speed 0 means 50 (FUN_00484xxx)

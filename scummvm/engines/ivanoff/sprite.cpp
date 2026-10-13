@@ -29,6 +29,8 @@
 #include "graphics/fonts/ttf.h"
 #include "graphics/fontman.h"
 #include "video/avi_decoder.h"
+#include "common/file.h"
+#include "image/png.h"
 #include "video/flic_decoder.h"
 
 #include "ivanoff/ivanoff.h"
@@ -615,6 +617,20 @@ void Anim::gotoFrame(int frame) {
 		fireTriggers();
 }
 
+void Anim::dumpFrames(const Common::String &prefix) {
+	if (!_loaded)
+		load();
+	int saved = _frame;
+	for (int i = 0; i < _frameCount; i++) {
+		gotoFrame(i);
+		const Graphics::Surface *f = (uint)i < _frames.size() ? _frames[i] : _current;
+		Common::DumpFile out;
+		if (f && out.open(Common::Path(Common::String::format("%s%d.png", prefix.c_str(), i))))
+			Image::writePNG(out, *f, _palette);
+	}
+	gotoFrame(saved);
+}
+
 void Anim::setFrameTrigger(int frame, const Message *msg) {
 	if (msg)
 		_triggers[frame].push_back(*msg);
@@ -656,17 +672,19 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 		g_engine->groupAdd(p1);
 
 	int last = MAX(_frameCount - 1, 0);
-	_reverse = false;
+	_hideAtEnd = false;
 	bool hold = false;
 	if (p2 & 0x80000000) {
 		int start = ((uint32)p2 >> 16) & 0x3fff;
 		if (start == 0x3fff)
 			start = last;
-		// FUN_00484290 stops the player at the first frame when +0xd0 is set:
-		// the start frame is shown and stays (closed doors, gauges).
+		// +0xd0: FUN_00484290 pauses the sprite (slot +0x60, FUN_0047b430) at
+		// the start frame, which a resume plays on (closed doors, gauges).
 		hold = (p2 & 0x40000000) != 0;
+		// +0xd4, a negative end: at the end the sprite is stopped (message
+		// 0x8002, FUN_0047fc70: child command 4).
 		int16 end = (int16)(p2 & 0xffff);
-		_reverse = end < 0;
+		_hideAtEnd = end < 0;
 		_endFrame = ABS<int>(end);
 		if (_endFrame == 0x3fff)
 			_endFrame = last;
@@ -674,10 +692,12 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 		gotoFrame(start);
 	} else {
 		_startFrame = _frame;
-		_endFrame = _reverse ? 0 : last;
+		_endFrame = last;
 	}
 	_endFrame = CLIP(_endFrame, 0, last);
-	_playing = !hold;
+	_playing = true;
+	_paused = hold;
+	debug(5, "Anim %d: play p1 %x p2 %x: frame %d, end %d, hold %d", _id, p1, p2, _frame, _endFrame, hold);
 	fireTriggers();
 	_nextFrameTime = g_engine->getMillis() + _period;
 }
@@ -698,6 +718,7 @@ void Anim::pause() {
 
 void Anim::resume(int32 start, int32 end) {
 	// FUN_0047b460
+	debug(5, "Anim %d: resume %d %d at frame %d (visible %d paused %d)", _id, start, end, _frame, _visible, _paused);
 	if (!_visible || !_paused)
 		return;
 	_paused = false;
@@ -710,7 +731,7 @@ void Anim::resume(int32 start, int32 end) {
 			return;
 		}
 		_endFrame = CLIP<int>(ABS<int>(end), 0, MAX(_frameCount - 1, 0));
-		_reverse = end < 0;
+		_hideAtEnd = end < 0;
 	}
 	_playing = true;
 	_nextFrameTime = g_engine->getMillis() + _period;
@@ -729,14 +750,19 @@ void Anim::update(uint32 now) {
 		finish();
 		return;
 	}
-	gotoFrame(_reverse ? _frame - 1 : _frame + 1);
+	gotoFrame(_frame + 1);
 }
 
 void Anim::finish() {
-	_playing = false;
+	// FUN_00484290 at the end frame: the sprite is paused there (FUN_0047b430),
+	// or stopped for a negative end; the owner is notified (message 0x8000).
+	debug(5, "Anim %d: end at frame %d of %d (start %d, end %d)", _id, _frame, _frameCount, _startFrame, _endFrame);
 	int32 notify = _notify;
 	_notify = 0;
+	_paused = true;
 	notifyDone(notify, kMsgAnimDone, _notifyParam);
+	if (_hideAtEnd && _visible)
+		stop();
 }
 
 // --- Hotspot (FUN_004786a0) ---

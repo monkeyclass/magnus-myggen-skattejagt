@@ -217,3 +217,13 @@
   child 0x55b) running all the time and doors opening and closing (`0xc0003fff` closed, `0xffff3fff` open), reported
   from the device. The trace checks didn't catch it: the baselines ran on this engine's sprite code too.
   Checked with frame dumps: idle in the hall, the old build changes the clock area every frame, the new one nothing.
+- **2026-10-13: doors didn't open (device report: "clicking a door hangs").** Reproduced on desktop by playing through
+  a new control channel (`debug_control=<file>`: click/pclick/key/shot/animdump commands appended while the game
+  runs in real time) and compared with the original exe under Wine (Xvfb + xdotool + a PulseAudio null sink; without
+  a sound device the original never finishes its first line and ignores input). Original: first click opens the
+  door (frame 0 → 8), second goes through. Cause: the animation player. From FUN_00484290 / FUN_0047fc70:
+  - flag `0x40000000` (+0xd0) pauses the sprite (slot +0x60, FUN_0047b430) on its start frame; a resume plays on;
+  - at the end frame the sprite is paused (resumable), and the owner notified;
+  - a negative end (+0xd4) stops the sprite at the end (message 0x8002 → child command 4), it isn't "reverse".
+  The door's resume did nothing because the held door wasn't "paused". Fixed; checked visually (door frames
+  matched pixel-for-pixel against the original's screenshots, then the room change to the library).

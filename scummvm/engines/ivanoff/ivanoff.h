@@ -175,6 +175,10 @@ private:
 	Common::HashMap<Common::String, Graphics::Font *> _fonts;
 
 	void runDebugEvents(uint32 now);
+	void runDebugEvent(const char *kind, uint x, uint y, uint32 now);
+	void pollDebugControl(uint32 now);
+	uint32 _controlPolled = 0;
+	uint _controlLines = 0;
 	uint32 _debugStart = 0;
 	int _debugEventIndex = 0;
 	int _crawlLeft = 0, _crawlIndex = 0;

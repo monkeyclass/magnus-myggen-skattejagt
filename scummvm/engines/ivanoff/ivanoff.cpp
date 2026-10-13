@@ -177,6 +177,8 @@ Common::Error IvanoffEngine::run() {
 			_virtualTime += _virtualStep;
 		uint32 now = getMillis();
 		runDebugEvents(now);
+		if (ConfMan.hasKey("debug_control"))
+			pollDebugControl(now);
 		_world->update();
 		updateChildren(now);
 		updateCursor();
