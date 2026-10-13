@@ -335,6 +335,11 @@ void IvanoffEngine::setGlobalCursor(uint32 cursor) {
 	updateCursor();
 }
 
+void IvanoffEngine::childCursorChanged(Child *c) {
+	if (c == _hover)
+		updateCursor();
+}
+
 void IvanoffEngine::updateCursor() {
 	// FUN_0047dfa0
 	uint32 want;

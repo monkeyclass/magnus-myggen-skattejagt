@@ -265,7 +265,6 @@ public:
 
 private:
 	void decodeTo(int frame);
-	void finish();
 
 	static const int32 kNoFrame = -0x8000;
 	static const uint32 kCacheLimit = 1024 * 1024;
@@ -294,10 +293,13 @@ protected:
 	Common::Array<Graphics::Surface *> _frames;
 	byte _palette[256 * 3];
 	int _frame = 0;
-	int _endFrame = 0;
-	bool _hideAtEnd = false; ///< a negative end frame: stopped at the end
-	bool _loopToEnd = true;  ///< no explicit end frame: loops _param times (0 = forever)
-	int _loops = 0;          ///< player +0xa0
+	bool _hideAtEnd = false;   ///< +0xd4: a negative end frame, stopped at the end
+	int _endSpec = 0xffff;     ///< +0xcc: |end| of the last play or resume
+	bool _holdPending = false; ///< +0xd0: pause at the first tick
+	int _loops = 0;            ///< player +0xa0
+	bool loopsRemain() const;
+	void step();
+	void notify();
 	bool _playing = false;
 	bool _paused = false;
 	uint32 _period = 50; ///< ms per frame; FLC speed 0 means 50 (FUN_00484xxx)

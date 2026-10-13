@@ -85,6 +85,8 @@ public:
 
 	/** FUN_00477120: the cursor shown everywhere (0 = per sprite). */
 	void setGlobalCursor(uint32 cursor);
+	/** FUN_0047df20 / FUN_0047e000: a child's cursor changed. */
+	void childCursorChanged(Child *c);
 	const byte *getScreenPalette() const { return _palette; }
 	/** Changes whenever the palette changes. */
 	uint32 getPaletteRevision() const { return _paletteRevision; }

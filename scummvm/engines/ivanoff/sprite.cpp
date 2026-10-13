@@ -41,15 +41,27 @@ namespace Ivanoff {
 
 // --- Child (FUN_00477560) ---
 
-Child::Child(uint16 id, uint16 type, uint32 flags) : _id(id), _type(type), _flags(flags & kFlagInputMask) {
+Child::Child(uint16 id, uint16 type, uint32 flags) : _id(id), _type(type) {
+	setFlags(flags);
 }
 
 void Child::setCursor(uint32 cursor) {
+	// FUN_00477a90: "no cursor" also clears the flags; a cursor makes the
+	// child one the mouse finds (0x10). The cursor changes at once if the
+	// mouse is over the child.
 	_cursor = cursor;
+	if (cursor == kNoCursor)
+		_flags = 0;
+	else
+		_flags |= kFlagHasCursor;
+	if (g_engine)
+		g_engine->childCursorChanged(this);
 }
 
 void Child::setFlags(uint32 flags) {
-	_flags = flags & kFlagInputMask;
+	// FUN_00477830: input children get the default cursor.
+	_flags = flags;
+	setCursor((flags & kFlagInputMask) ? 0x80000003 : kNoCursor);
 }
 
 void Child::handleCommand(Message &msg) {
@@ -512,6 +524,10 @@ void Anim::load() {
 	if (_loaded)
 		return;
 	loadFrames();
+	// A new frame player (FUN_004841b0): end 0xffff, loop count 0.
+	_endSpec = 0xffff;
+	_hideAtEnd = false;
+	_loops = 0;
 }
 
 void Anim::loadFrames() {
@@ -612,8 +628,6 @@ void Anim::gotoFrame(int frame) {
 	_frame = CLIP<int>(frame, 0, _frameCount - 1);
 	if (_decoder)
 		decodeTo(_frame);
-	if (_visible)
-		fireTriggers();
 }
 
 void Anim::dumpFrames(const Common::String &prefix) {
@@ -670,40 +684,24 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 	if (p1 & 0x80000000)
 		g_engine->groupAdd(p1);
 
+	// FUN_004817f0: the frames part of p2 is only written when bit 31 is set;
+	// otherwise the end and hide flags of the last play stay (+0xcc, +0xd4).
 	int last = MAX(_frameCount - 1, 0);
-	_hideAtEnd = false;
-	_loopToEnd = true;
-	_loops = 0;
-	bool hold = false;
 	if (p2 & 0x80000000) {
 		int start = ((uint32)p2 >> 16) & 0x3fff;
 		if (start == 0x3fff)
 			start = last;
-		// +0xd0: FUN_00484290 pauses the sprite (slot +0x60, FUN_0047b430) at
-		// the start frame, which a resume plays on (closed doors, gauges).
-		hold = (p2 & 0x40000000) != 0;
-		// +0xd4, a negative end: at the end the sprite is stopped (message
-		// 0x8002, FUN_0047fc70: child command 4).
-		int16 end = (int16)(p2 & 0xffff);
-		_hideAtEnd = end < 0;
-		_endFrame = ABS<int>(end);
-		// +0xcc: an end of 0x3fff is "the last frame", where the player loops
-		// as without an end (FUN_00484290); another end stops there.
-		if (_endFrame == 0x3fff)
-			_endFrame = last;
-		else
-			_loopToEnd = false;
-		_startFrame = start;
 		gotoFrame(start);
-	} else {
-		_startFrame = _frame;
-		_endFrame = last;
+		// +0xd0: the first tick pauses the sprite on its start frame (a
+		// resume plays on: closed doors, gauges).
+		_holdPending = (p2 & 0x40000000) != 0;
+		// +0xcc |end|, +0xd4 end < 0: stop the sprite at the end.
+		int16 end = (int16)(p2 & 0xffff);
+		_endSpec = ABS<int>(end);
+		_hideAtEnd = end < 0;
 	}
-	_endFrame = CLIP(_endFrame, 0, last);
 	_playing = true;
-	_paused = hold;
-	debug(5, "Anim %d: play p1 %x p2 %x: frame %d, end %d, hold %d", _id, p1, p2, _frame, _endFrame, hold);
-	fireTriggers();
+	debug(5, "Anim %d: play p1 %x p2 %x: frame %d, end %d, hold %d", _id, p1, p2, _frame, _endSpec, _holdPending);
 	_nextFrameTime = g_engine->getMillis() + _period;
 }
 
@@ -727,6 +725,7 @@ void Anim::resume(int32 start, int32 end) {
 	if (!_visible || !_paused)
 		return;
 	_paused = false;
+	_holdPending = false;
 	if (start != kNoFrame)
 		gotoFrame(start);
 	if (end != kNoFrame) {
@@ -735,15 +734,36 @@ void Anim::resume(int32 start, int32 end) {
 			gotoFrame(end);
 			return;
 		}
-		_endFrame = CLIP<int>(ABS<int>(end), 0, MAX(_frameCount - 1, 0));
+		_endSpec = ABS<int>(end);
 		_hideAtEnd = end < 0;
-		_loopToEnd = ABS<int>(end) == 0x3fff;
 	}
 	_playing = true;
 	_nextFrameTime = g_engine->getMillis() + _period;
 }
 
+bool Anim::loopsRemain() const {
+	// FUN_00478060: the constructor's parameter is the loop count, 0 = forever.
+	return _param == 0 || _loops < (int)_param;
+}
+
+void Anim::step() {
+	// FUN_00489290: the next frame; past the last one, the loop count goes up
+	// and the player starts over, or stays on the last frame and notifies.
+	if (_frame + 1 < _frameCount) {
+		gotoFrame(_frame + 1);
+		return;
+	}
+	_loops++;
+	if (!loopsRemain()) {
+		gotoFrame(_frameCount - 1);
+		notify();
+		return;
+	}
+	gotoFrame(0);
+}
+
 void Anim::update(uint32 now) {
+	// FUN_00484290, once per frame period.
 	if (!_visible || !_playing || _paused || _frameCount == 0)
 		return;
 	if (now < _nextFrameTime)
@@ -752,33 +772,41 @@ void Anim::update(uint32 now) {
 	// Don't try to catch up after long stalls.
 	_nextFrameTime = MAX(_nextFrameTime + _period, now);
 
-	if (_frame == _endFrame) {
-		// FUN_00489290 / FUN_00478060: at the last frame the player starts
-		// over until the loop count (the constructor's parameter, 0 = forever)
-		// is reached.
-		if (_loopToEnd && _endFrame == _frameCount - 1) {
-			_loops++;
-			if (_param == 0 || _loops < _param) {
-				gotoFrame(0);
-				return;
-			}
-		}
-		finish();
+	if (_holdPending) {
+		_holdPending = false;
+		_paused = true;
+		fireTriggers();
 		return;
 	}
-	gotoFrame(_frame + 1);
+	// The frame's triggers, then the step.
+	fireTriggers();
+	int last = _frameCount - 1;
+	if (_frame == _endSpec - 1 || (_endSpec == 0 && _frame == last)) {
+		// The end: one more step, then pause (or stop) and notify.
+		step();
+		if (!_hideAtEnd)
+			_paused = true;
+		notify();
+		if (_hideAtEnd)
+			stop();
+		return;
+	}
+	if (_frame != last) {
+		step();
+		return;
+	}
+	step();
+	if (!loopsRemain() && !_hideAtEnd)
+		_paused = true;
+	if (_hideAtEnd)
+		stop(); // message 0x8002 (FUN_0047fc70): child command 4
 }
 
-void Anim::finish() {
-	// FUN_00484290 at the end frame: the sprite is paused there (FUN_0047b430),
-	// or stopped for a negative end; the owner is notified (message 0x8000).
-	debug(5, "Anim %d: end at frame %d of %d (start %d, end %d)", _id, _frame, _frameCount, _startFrame, _endFrame);
-	int32 notify = _notify;
-	_notify = 0;
-	_paused = true;
-	notifyDone(notify, kMsgAnimDone, _notifyParam);
-	if (_hideAtEnd && _visible)
-		stop();
+void Anim::notify() {
+	// The notification set by play stays for later ends, until a play
+	// without one or the unload (FUN_00484490).
+	debug(5, "Anim %d: notify at frame %d", _id, _frame);
+	notifyDone(_notify, kMsgAnimDone, _notifyParam);
 }
 
 // --- Hotspot (FUN_004786a0) ---

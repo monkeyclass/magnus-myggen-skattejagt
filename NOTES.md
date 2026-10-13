@@ -234,3 +234,17 @@
   end frame (or with end 0x3fff) the player wraps to frame 0 until the count is reached (FUN_00489290,
   FUN_00478060), and only then notifies and pauses. Ours played everything once, so idle loops froze (e.g. the
   "forgotten moment" coins of object 82). Checked against the original's screenshots: same coin positions over time.
+- **Engine audit against the decompilation** (all child commands; 13 findings) and fixes:
+  - frame player as FUN_00484290/FUN_00489290: per tick, the frame's triggers fire, then the step; an end E stops on
+    frame E (end 0: one step past the last frame); 0x3fff/none loops up to the count; done is notified in the tick
+    the end is reached; the hold pauses on the first tick; play keeps the last end/hide unless p2 bit 31; the loop
+    count lives with the frame player (reset at load); goto-frame and resume fire no triggers;
+  - the done notification stays set for later ends (until a play without one), so resumed animations notify again;
+  - set-cursor (FUN_00477a90): no-cursor clears the flags, a cursor sets 0x10 (hoverable), the cursor changes at
+    once when the mouse is over the child; set-flags (FUN_00477830) gives input children cursor 0x80000003; the
+    flags are no longer masked (get-flags returns 0x10 too).
+  Not yet done (low): z ≤ 0 ignored by set-z, move-by z, scroll wrap/result, TextResource fallback, hotspot no-ops.
+- **Room sweep against the original:** for 35 rooms, the same save loaded in the original (Wine) and in ours,
+  12 screenshots each: static difference < 1.4% everywhere (animation phase, subtitles excluded), same animated
+  areas in all but room 55 (Magnus doesn't move while talking in ours) and timing artefacts (52, 34).
+  Tools: /tmp-only scripts, see docs/PORTING.md "Checking against the original".
