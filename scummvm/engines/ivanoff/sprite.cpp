@@ -301,7 +301,7 @@ Common::Rect Sprite::getBounds() const {
 		return Common::Rect();
 	int w = _viewW ? MIN<int>(_viewW, s->w - _srcX) : s->w - _srcX;
 	int h = _viewH ? MIN<int>(_viewH, s->h - _srcY) : s->h - _srcY;
-	return Common::Rect(_x, _y, _x + MAX(w, 0), _y + MAX(h, 0));
+	return Common::Rect(left(), top(), left() + MAX(w, 0), top() + MAX(h, 0));
 }
 
 void Sprite::setView(int32 w, int32 h) {
@@ -336,7 +336,7 @@ bool Sprite::hitTest(int x, int y) const {
 	// Command 0x2c makes the whole bounding box count (+0x54).
 	if (_transparent < 0 || _inputDisabled)
 		return true;
-	return *(const byte *)s->getBasePtr(x - _x + _srcX, y - _y + _srcY) != _transparent;
+	return *(const byte *)s->getBasePtr(x - left() + _srcX, y - top() + _srcY) != _transparent;
 }
 
 void Sprite::draw(Graphics::Surface &dst) const {
@@ -352,7 +352,7 @@ void Sprite::draw(Graphics::Surface &dst) const {
 		return;
 
 	for (int y = r.top; y < r.bottom; y++) {
-		const byte *src = (const byte *)s->getBasePtr(r.left - _x + _srcX, y - _y + _srcY);
+		const byte *src = (const byte *)s->getBasePtr(r.left - left() + _srcX, y - top() + _srcY);
 		byte *d = (byte *)dst.getBasePtr(r.left, y);
 		if (_transparent < 0) {
 			memcpy(d, src, r.width());

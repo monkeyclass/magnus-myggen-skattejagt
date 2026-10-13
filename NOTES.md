@@ -248,3 +248,8 @@
   12 screenshots each: static difference < 1.4% everywhere (animation phase, subtitles excluded), same animated
   areas in all but room 55 (Magnus doesn't move while talking in ours) and timing artefacts (52, 34).
   Tools: /tmp-only scripts, see docs/PORTING.md "Checking against the original".
+- **Sprite slot +0x78 (FUN_00481c30) sets the origin, not an initial position.** The frame player draws at
+  position − origin (FUN_00489ad6 / FUN_00489570); hotspots ignore it (FUN_00478990). Ours set the position, so the
+  22 sprites with an origin (e.g. the planets of room 22 after opening the chest) were drawn in the wrong place.
+  Found with a click sweep against the original (`tools/port/play/clicks.sh`: same save, every clickable target in
+  turn, screenshots compared).

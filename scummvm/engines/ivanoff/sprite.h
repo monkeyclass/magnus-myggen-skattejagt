@@ -162,11 +162,20 @@ public:
 	void setPos(int32 x, int32 y, int32 z) override;
 	void setZ(int32 z) override;
 
-	/** FUN_00481c30: set the position without loading. */
+	/**
+	 * FUN_00481c30 (slot +0x78): the origin, the point of the image that the
+	 * position names (sprite +0x64/+0x68, frame player +0x68/+0x6c, which
+	 * FUN_00489570 subtracts). Hotspots ignore it (FUN_00478990).
+	 */
 	void setInitialPos(int32 x, int32 y) {
-		_x = x;
-		_y = y;
+		if (_type == kTypeHotspot)
+			return;
+		_originX = x;
+		_originY = y;
 	}
+	/** The drawn top-left corner. */
+	int32 left() const { return _x - _originX; }
+	int32 top() const { return _y - _originY; }
 
 	Common::Rect getBounds() const;
 	bool isShown() const { return _visible && _shown; }
@@ -201,6 +210,7 @@ public:
 
 protected:
 	int32 _x = 0, _y = 0, _z = 0;
+	int32 _originX = 0, _originY = 0;
 	int32 _viewW = 0, _viewH = 0; ///< image +0x70/+0x74 [unverified]
 	int32 _srcX = 0, _srcY = 0;
 	int32 _transparent; ///< +0x5c: palette index drawn transparent, -1 = opaque
