@@ -4,6 +4,16 @@ The game runs in ScummVM with this project's `ivanoff` engine
 ([`scummvm/`](../scummvm/README.md)), built for the Miyoo Mini and packaged as an
 Onion OS app. You need the **Nordic retail CD (2002)**, or an image of it.
 
+The CD image is on archive.org:
+<https://archive.org/details/magnus-myggen-den-store-skattejagt>: `MM2NORD.bin` (681,889,488 bytes,
+MD5 `dfa8c80a4cb58c2787d0ca2ae45702ec`) and `MM2NORD.cue`. It has all four languages and no copy
+protection. Convert it to an `.iso` for `prepare-game.sh`:
+
+    python3 linux/bin2iso.py MM2NORD.bin MM2NORD.iso
+
+(or `bchunk MM2NORD.bin MM2NORD.cue MM2NORD`). Don't use the 2006 "Superstarter" disc: it is
+a time-limited trial.
+
 ## 1. Get the app
 
 Download `MagnusMyggen2-OnionOS.zip` from the project's
@@ -30,7 +40,10 @@ name such as `v0.2.0`. Or build it yourself on Linux:
 `mm2run.exe` from the CD's installer cabinet. It needs `unshield` (and `7z` for an
 `.iso`):
 
-    miyoo/prepare-game.sh /media/cdrom dist/App/MagnusMyggen2/game DK
+    miyoo/prepare-game.sh MM2NORD.iso dist/App/MagnusMyggen2/game DK
+
+(or a mounted CD, e.g. `/media/cdrom`, instead of the `.iso`). With the release zip,
+unzip it first and use its `App/MagnusMyggen2/game` as the game folder.
 
 The last argument is the language: `DK`, `N`, `S` or `SF`. Only that language's
 folder is copied (about 240 MB in all). For another language than Danish, also
@@ -52,19 +65,21 @@ Copy `dist/App/MagnusMyggen2` to `App/` on the SD card. It appears in Onion's
 | D-pad | move the pointer (with R: slowly) |
 | A | click |
 | B | right click |
-| Y | Esc: skip a cut-scene |
-| Start | ScummVM menu (quit, options) |
+| X | Esc: the game's menu, skip a cut-scene |
+| Y | space |
+| Start | ScummVM menu (save, load, options, quit) |
 
-These are ScummVM's defaults on the Miyoo Mini and can be changed in its menu.
+The game's keys (Esc, arrows, space, F5 load, F6 save) can be remapped in ScummVM's
+options (Keymaps).
 
 ## Saving
 
-Use the game's own save screen. Saves and settings go to `saves/` in the app
+Use the game's own save screen, or save and load from ScummVM's menu (Start); both
+work where the original allows saving. Saves and settings go to `saves/` in the app
 folder. `log.txt` there has the log of the last run.
 
 ## Status
 
-**[unverified]** Tested with the ARM build under `qemu-arm` (same binary, same
-libraries from the toolchain), not yet on a device. The game logic needs little
-CPU (under 100k emulated instructions per second); the screen is only redrawn
-when something changes.
+**[unverified]** Not yet tested on a device. The game logic is native C++; it was checked
+against the original game's code with automatic runs, not by playing it through.
+v0.2.1 fixes a memory leak of v0.2.0 that would have run the Miyoo out of memory.
