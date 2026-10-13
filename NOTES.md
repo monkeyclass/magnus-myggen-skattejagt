@@ -206,3 +206,8 @@
   called. Found with valgrind massif. Also, animation resources over 256 KB are now streamed from the .dat
   (`SafeSeekableSubReadStream`, main thread only; sounds stay in memory because the mixer thread reads them). Peak
   RSS over a 600 s walk: 53 MB (was 136 MB and growing). The Miyoo Mini has 128 MB; v0.2.0 would have run out.
+- **2026-10-13: first device test (Miyoo Mini, v0.2.1): the pointer couldn't be moved**; doors opened and closed and the
+  clock ran. Cause: the game keymap bound the arrow actions to `JOY_UP`… (the Miyoo's d-pad) and was named
+  `ivanoff-default`, so the Miyoo backend's "clear the arrows of `engine-default`" didn't apply and the d-pad sent
+  arrow keys to the game (which steps through hotspots) instead of moving the virtual mouse **[unverified: fix not
+  yet tried on the device]**. Fix: keymap id `engine-default`, no joystick defaults for the arrows.

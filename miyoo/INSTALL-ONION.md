@@ -70,7 +70,7 @@ Copy `dist/App/MagnusMyggen2` to `App/` on the SD card. It appears in Onion's
 | Start | ScummVM menu (save, load, options, quit) |
 
 The game's keys (Esc, arrows, space, F5 load, F6 save) can be remapped in ScummVM's
-options (Keymaps).
+options (Keymaps). The arrows have no button by default, since the d-pad moves the pointer.
 
 ## Saving
 

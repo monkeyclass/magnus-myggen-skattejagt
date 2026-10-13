@@ -57,7 +57,7 @@ bool IvanoffMetaEngine::hasFeature(MetaEngineFeature f) const {
 Common::KeymapArray IvanoffMetaEngine::initKeymaps(const char *target) const {
 	using namespace Common;
 
-	Keymap *keymap = new Keymap(Keymap::kKeymapTypeGame, "ivanoff-default", _("Default keymappings"));
+	Keymap *keymap = new Keymap(Keymap::kKeymapTypeGame, "engine-default", _("Default keymappings"));
 	Action *act;
 
 	act = new Action(kStandardActionLeftClick, _("Interact"));
@@ -73,6 +73,8 @@ Common::KeymapArray IvanoffMetaEngine::initKeymaps(const char *target) const {
 	keymap->addAction(act);
 
 	// The custom events are the Windows virtual key codes the game reads.
+	// The arrows have no joystick defaults: on handhelds the d-pad moves the
+	// pointer (backends clear the keyboard arrows of "engine-default" too).
 	static const struct {
 		const char *id;
 		const char *label;
@@ -80,10 +82,10 @@ Common::KeymapArray IvanoffMetaEngine::initKeymaps(const char *target) const {
 		const char *key, *joy;
 	} kKeys[] = {
 		{ "MENU", _s("Menu / skip"), 0x1b, "ESCAPE", "JOY_X" },
-		{ "UP", _s("Up"), 0x26, "UP", "JOY_UP" },
-		{ "DOWN", _s("Down"), 0x28, "DOWN", "JOY_DOWN" },
-		{ "LEFT", _s("Left"), 0x25, "LEFT", "JOY_LEFT" },
-		{ "RIGHT", _s("Right"), 0x27, "RIGHT", "JOY_RIGHT" },
+		{ "UP", _s("Up"), 0x26, "UP", nullptr },
+		{ "DOWN", _s("Down"), 0x28, "DOWN", nullptr },
+		{ "LEFT", _s("Left"), 0x25, "LEFT", nullptr },
+		{ "RIGHT", _s("Right"), 0x27, "RIGHT", nullptr },
 		{ "SPACE", _s("Space"), 0x20, "SPACE", "JOY_Y" },
 		{ "LOAD", _s("Load screen"), 0x74, "F5", nullptr },
 		{ "SAVE", _s("Save screen"), 0x75, "F6", nullptr }

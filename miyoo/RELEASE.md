@@ -6,7 +6,12 @@ of the SD card, then put `MM2.DAT`, `MM2.IDX`, the language folder (`DK/`, `N/`,
 `SF/`), `LAB/` and `mm2run.exe` into `App/MagnusMyggen2/game/`. `miyoo/prepare-game.sh`
 does this from the CD or an .iso. Full instructions: [`miyoo/INSTALL-ONION.md`](https://github.com/monkeyclass/magnus-myggen-skattejagt/blob/main/miyoo/INSTALL-ONION.md).
 
-Status (v0.2.1): fixes a memory leak of v0.2.0 that would run the Miyoo out of memory
+Status (v0.2.2): fixes the controls on the device. In v0.2.0/v0.2.1 the d-pad sent arrow
+keys to the game instead of moving the pointer (the game then stepped through the room's
+hotspots: doors opening and closing, the clock running). The game's arrow keys (for the
+arrow-key games) now have no default button; set them in Start → Options → Keymaps if needed.
+
+v0.2.1: fixes a memory leak of v0.2.0 that would run the Miyoo out of memory
 after a minute or so in rooms with looping animations (an FLC decoder kept every frame's
 changed areas), and lowers peak memory by reading full-screen animations from the data file
 as they play: about 53 MB on desktop over a long automatic walk (was 136 MB and growing).
