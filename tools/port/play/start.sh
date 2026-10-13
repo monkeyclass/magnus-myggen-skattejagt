@@ -17,5 +17,5 @@ path=/home/user/gamedata/mm2-scummvm
 random_seed=1234
 debug_control=$d/ctl
 INI
-SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy nohup ${BIN:-/home/user/scummvm/scummvm} -c $d/ini -d5 mm2-dk > $d/log 2>&1 &
+SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=${AUDIO:-pulseaudio} nohup ${BIN:-/home/user/scummvm/scummvm} -c $d/ini -d5 mm2-dk > $d/log 2>&1 &
 echo started
