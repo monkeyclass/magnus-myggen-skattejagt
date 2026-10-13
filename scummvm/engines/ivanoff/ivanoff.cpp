@@ -292,13 +292,18 @@ void IvanoffEngine::initPalette() {
 	_paletteDirty = true;
 }
 
-void IvanoffEngine::setGamePalette(const byte *palette) {
-	// FUN_0047f4f0 copies 236 entries, starting at entry 10.
+uint32 IvanoffEngine::setGamePalette(const byte *palette, uint32 owner) {
+	// FUN_0047f4f0 copies 236 entries, starting at entry 10, and returns the
+	// previous palette's owner ((child << 16) | object), which the game logic
+	// keeps to restore it (dialogs, the save screen, the inventory).
+	uint32 previous = _paletteOwner;
+	_paletteOwner = owner;
 	if (memcmp(_palette + 10 * 3, palette + 10 * 3, 236 * 3)) {
 		memcpy(_palette + 10 * 3, palette + 10 * 3, 236 * 3);
 		_paletteDirty = true;
 		_paletteRevision++;
 	}
+	return previous;
 }
 
 // --- cursors ---

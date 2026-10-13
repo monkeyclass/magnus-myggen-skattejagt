@@ -227,3 +227,10 @@
   - a negative end (+0xd4) stops the sprite at the end (message 0x8002 → child command 4), it isn't "reverse".
   The door's resume did nothing because the held door wasn't "paused". Fixed; checked visually (door frames
   matched pixel-for-pixel against the original's screenshots, then the room change to the library).
+- **Use-palette returns the previous palette's owner** (FUN_0047f4f0, engine +0x58: (child << 16) | object). The game
+  logic keeps it to restore the palette when the quit dialog, save screen, options and inventory close; ours returned
+  0, which left the dialog's palette on the room (seen after Esc → "Nej").
+- **Animation loop count** = the constructor's parameter (like sounds: 0 = forever, 1 = once). Without an explicit
+  end frame (or with end 0x3fff) the player wraps to frame 0 until the count is reached (FUN_00489290,
+  FUN_00478060), and only then notifies and pauses. Ours played everything once, so idle loops froze (e.g. the
+  "forgotten moment" coins of object 82). Checked against the original's screenshots: same coin positions over time.

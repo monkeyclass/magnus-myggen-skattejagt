@@ -89,7 +89,8 @@ public:
 	/** Changes whenever the palette changes. */
 	uint32 getPaletteRevision() const { return _paletteRevision; }
 	/** Command 10: entries 10-245 of the screen palette from an image's palette. */
-	void setGamePalette(const byte *palette);
+	uint32 setGamePalette(const byte *palette, uint32 owner = 0);
+	uint32 _paletteOwner = 0; ///< engine +0x58
 
 	/** Command 0x14: the sprite follows the mouse, held at (x, y). */
 	void attachToCursor(Sprite *sprite, int x, int y, int32 param);

@@ -296,6 +296,8 @@ protected:
 	int _frame = 0;
 	int _endFrame = 0;
 	bool _hideAtEnd = false; ///< a negative end frame: stopped at the end
+	bool _loopToEnd = true;  ///< no explicit end frame: loops _param times (0 = forever)
+	int _loops = 0;          ///< player +0xa0
 	bool _playing = false;
 	bool _paused = false;
 	uint32 _period = 50; ///< ms per frame; FLC speed 0 means 50 (FUN_00484xxx)

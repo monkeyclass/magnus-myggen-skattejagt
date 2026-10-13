@@ -219,9 +219,8 @@ void Sprite::handleCommand(Message &msg) {
 	case kCmdUsePalette:
 		if (!_loaded)
 			load();
-		if (getPalette())
-			g_engine->setGamePalette(getPalette());
-		msg.result = 0;
+		// FUN_00481b10: the result is the previous palette's owner.
+		msg.result = getPalette() ? g_engine->setGamePalette(getPalette(), ((uint32)_id << 16) | (_owner ? _owner->getId() : 0)) : 0;
 		break;
 	case kCmdMove:
 		// FUN_0047e180: attach to the mouse cursor (dragging), grabbed at (x, y).
@@ -673,6 +672,8 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 
 	int last = MAX(_frameCount - 1, 0);
 	_hideAtEnd = false;
+	_loopToEnd = true;
+	_loops = 0;
 	bool hold = false;
 	if (p2 & 0x80000000) {
 		int start = ((uint32)p2 >> 16) & 0x3fff;
@@ -686,8 +687,12 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 		int16 end = (int16)(p2 & 0xffff);
 		_hideAtEnd = end < 0;
 		_endFrame = ABS<int>(end);
+		// +0xcc: an end of 0x3fff is "the last frame", where the player loops
+		// as without an end (FUN_00484290); another end stops there.
 		if (_endFrame == 0x3fff)
 			_endFrame = last;
+		else
+			_loopToEnd = false;
 		_startFrame = start;
 		gotoFrame(start);
 	} else {
@@ -732,6 +737,7 @@ void Anim::resume(int32 start, int32 end) {
 		}
 		_endFrame = CLIP<int>(ABS<int>(end), 0, MAX(_frameCount - 1, 0));
 		_hideAtEnd = end < 0;
+		_loopToEnd = ABS<int>(end) == 0x3fff;
 	}
 	_playing = true;
 	_nextFrameTime = g_engine->getMillis() + _period;
@@ -747,6 +753,16 @@ void Anim::update(uint32 now) {
 	_nextFrameTime = MAX(_nextFrameTime + _period, now);
 
 	if (_frame == _endFrame) {
+		// FUN_00489290 / FUN_00478060: at the last frame the player starts
+		// over until the loop count (the constructor's parameter, 0 = forever)
+		// is reached.
+		if (_loopToEnd && _endFrame == _frameCount - 1) {
+			_loops++;
+			if (_param == 0 || _loops < _param) {
+				gotoFrame(0);
+				return;
+			}
+		}
 		finish();
 		return;
 	}
