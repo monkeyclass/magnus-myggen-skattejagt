@@ -113,3 +113,25 @@ most handlers):
 * Use the names of `world.h` for messages and commands where they fit;
   keep hex constants (child ids, text ids) otherwise. Mark guesses
   **[unverified]**.
+
+## Checking against the original
+
+The trace checks compare game logic only: both sides run this engine's sprites,
+sounds and input, so engine-layer bugs (animation player, palettes, cursors)
+pass them. These tools compare with the real `mm2run.exe` instead
+(`tools/port/play/`, written for the development container; adjust the paths):
+
+- The original runs under Wine on a virtual display: `Xvfb :5`, a PulseAudio
+  null sink (`pulseaudio -D -n --load="module-null-sink sink_name=null"
+  --load=module-native-protocol-unix`; without a sound device the game never
+  finishes its first line and ignores input), installed with
+  `linux/install-mm2.sh`. `r.sh WAIT cmd...` clicks/keys with xdotool and takes
+  a screenshot.
+- Ours runs in real time with `debug_control=<file>`: lines appended to the
+  file are run as they come (`pclick:x,y` as a real mouse click, `click`,
+  `move`, `esc`, `vk:code`, `shot:n` screenshot, `animdump:obj,child` frames of
+  an animation, `dump` visible sprites). `start.sh NAME`, `p.sh NAME WAIT cmd...`.
+- `room.sh ROOM` loads the same save (our saves are the original's format) in
+  both and takes 12 screenshots each; `cmp.py` reports the static difference
+  and the animated areas, and writes a side-by-side image; `all.sh` does every
+  room.

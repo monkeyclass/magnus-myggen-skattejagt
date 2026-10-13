@@ -1,0 +1,5 @@
+#!/bin/sh
+for r in 22 23 24 25 26 27 28 29 30 31 32 34 35 36 37 38 39 40 41 42 43 44 45 49 50 51 52 53 54 55 56 57 58 59 62; do
+  room=$(/tmp/claude-0/cmp/room.sh $r 2>/dev/null | tail -1)
+  echo "$r [$room] $(python3 /tmp/claude-0/cmp/cmp.py /tmp/claude-0/cmp/$r 2>&1)"
+done
