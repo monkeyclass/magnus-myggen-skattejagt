@@ -211,3 +211,9 @@
   `ivanoff-default`, so the Miyoo backend's "clear the arrows of `engine-default`" didn't apply and the d-pad sent
   arrow keys to the game (which steps through hotspots) instead of moving the virtual mouse **[unverified: fix not
   yet tried on the device]**. Fix: keymap id `engine-default`, no joystick defaults for the arrows.
+- **2026-10-13: animations that should stand still were looping.** Play flag `0x40000000` (with `0x80000000` and a
+  start frame) was read as "loop"; the original (FUN_004817f0 sets anim +0xd0, FUN_00484290 then stops the player
+  at the first frame) shows the start frame and stops. Visible as the clock gauge of the inventory bar (object 12,
+  child 0x55b) running all the time and doors opening and closing (`0xc0003fff` closed, `0xffff3fff` open), reported
+  from the device. The trace checks didn't catch it: the baselines ran on this engine's sprite code too.
+  Checked with frame dumps: idle in the hall, the old build changes the clock area every frame, the new one nothing.

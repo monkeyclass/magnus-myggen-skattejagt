@@ -293,7 +293,6 @@ protected:
 	byte _palette[256 * 3];
 	int _frame = 0;
 	int _endFrame = 0;
-	bool _loop = false;
 	bool _reverse = false;
 	bool _playing = false;
 	bool _paused = false;

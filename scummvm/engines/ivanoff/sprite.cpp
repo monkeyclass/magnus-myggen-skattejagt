@@ -656,13 +656,15 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 		g_engine->groupAdd(p1);
 
 	int last = MAX(_frameCount - 1, 0);
-	_loop = false;
 	_reverse = false;
+	bool hold = false;
 	if (p2 & 0x80000000) {
 		int start = ((uint32)p2 >> 16) & 0x3fff;
 		if (start == 0x3fff)
 			start = last;
-		_loop = (p2 & 0x40000000) != 0;
+		// FUN_00484290 stops the player at the first frame when +0xd0 is set:
+		// the start frame is shown and stays (closed doors, gauges).
+		hold = (p2 & 0x40000000) != 0;
 		int16 end = (int16)(p2 & 0xffff);
 		_reverse = end < 0;
 		_endFrame = ABS<int>(end);
@@ -675,7 +677,7 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 		_endFrame = _reverse ? 0 : last;
 	}
 	_endFrame = CLIP(_endFrame, 0, last);
-	_playing = true;
+	_playing = !hold;
 	fireTriggers();
 	_nextFrameTime = g_engine->getMillis() + _period;
 }
@@ -724,10 +726,6 @@ void Anim::update(uint32 now) {
 	_nextFrameTime = MAX(_nextFrameTime + _period, now);
 
 	if (_frame == _endFrame) {
-		if (_loop) {
-			gotoFrame(_startFrame == _endFrame ? 0 : _startFrame);
-			return;
-		}
 		finish();
 		return;
 	}
