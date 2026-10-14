@@ -177,6 +177,8 @@ Common::Error IvanoffEngine::run() {
 			_virtualTime += _virtualStep;
 		uint32 now = getMillis();
 		runDebugEvents(now);
+		// FUN_0047f460 (each frame): the child under a still mouse can change.
+		updateHover(_mouseX, _mouseY);
 		if (ConfMan.hasKey("debug_control"))
 			pollDebugControl(now);
 		_world->update();
@@ -556,19 +558,31 @@ void IvanoffEngine::onMouseMove(int x, int y) {
 	for (uint i = 0; i < _attached.size(); i++)
 		_attached[i].sprite->setPos(x - _attached[i].x, y - _attached[i].y, -1);
 
-	Child *c = hitTest(x, y, kFlagInputMask);
-	if (c != _hover) {
-		int32 oldKey = childKey(_hover), newKey = childKey(c);
-		if (_hover && (_hover->getFlags() & kFlagEnterLeave))
-			sendTo(_hover, kMsgMouseLeave, _hover->getId(), newKey, _hover->localCoords(x, y));
-		if (c && (c->getFlags() & kFlagEnterLeave))
-			sendTo(c, kMsgMouseEnter, c->getId(), oldKey, c->localCoords(x, y));
-		_hover = c;
-	}
-	dragOver(x, y);
+	updateHover(x, y);
 	if (_hover && (_hover->getFlags() & kFlagMouseMove))
 		sendTo(_hover, kMsgMouseMove, _hover->getId(), (y << 16) | (x & 0xffff), _hover->localCoords(x, y));
 	updateCursor();
+}
+
+int32 IvanoffEngine::whoIsDragged() const {
+	return childKey(_dragged);
+}
+
+void IvanoffEngine::updateHover(int x, int y) {
+	// FUN_0047f2b0: only a change of the child under the mouse is reported
+	// (leave, enter, and the drag feedback); a child with id 0 doesn't count.
+	Child *c = hitTest(x, y, kFlagInputMask);
+	if (c && c->getId() == 0)
+		return;
+	if (c == _hover)
+		return;
+	int32 oldKey = childKey(_hover), newKey = childKey(c);
+	if (_hover && (_hover->getFlags() & kFlagEnterLeave))
+		sendTo(_hover, kMsgMouseLeave, _hover->getId(), newKey, _hover->localCoords(x, y));
+	if (c && (c->getFlags() & kFlagEnterLeave))
+		sendTo(c, kMsgMouseEnter, c->getId(), oldKey, c->localCoords(x, y));
+	_hover = c;
+	dragOver(x, y);
 }
 
 void IvanoffEngine::dragOver(int x, int y) {
@@ -704,6 +718,7 @@ void IvanoffEngine::attachToCursor(Sprite *sprite, int x, int y, int32 param) {
 	a.x = x;
 	a.y = y;
 	a.savedZ = sprite->getZ();
+	a.savedVisible = sprite->isVisible();
 	_attached.push_back(a);
 	sprite->setPos(_mouseX - x, _mouseY - y, 0xffffffe);
 	if (!sprite->isVisible())
@@ -714,9 +729,14 @@ void IvanoffEngine::attachToCursor(Sprite *sprite, int x, int y, int32 param) {
 void IvanoffEngine::detachFromCursor(Sprite *sprite) {
 	for (uint i = 0; i < _attached.size(); i++) {
 		if (_attached[i].sprite == sprite) {
+			// FUN_0047e2a0: back to its z, and hidden again if it was hidden
+			// when attached (an item's icon going back to the item).
 			sprite->setZ(_attached[i].savedZ);
 			sprite->_busy = false;
+			bool wasVisible = _attached[i].savedVisible;
 			_attached.remove_at(i);
+			if (!wasVisible)
+				sprite->stop();
 			return;
 		}
 	}

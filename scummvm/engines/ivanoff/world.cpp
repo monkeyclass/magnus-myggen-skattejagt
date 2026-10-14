@@ -164,6 +164,13 @@ int32 World::deliver(GameObject *from, Message &msg) {
 		return 0;
 	}
 
+	if (msg.target == kInputObject) {
+		// The input manager (FUN_0047dc00 registers it as object 32000;
+		// FUN_0047e9a0): it only answers who is being dragged.
+		msg.result = msg.msg == kMsgWhoIsDragged ? g_engine->whoIsDragged() : 0;
+		return msg.result;
+	}
+
 	GameObject *obj = get(msg.target);
 	if (!obj) {
 		debug(2, "Message %d to missing object %d", msg.msg, msg.target);

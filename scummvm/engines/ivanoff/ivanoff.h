@@ -87,6 +87,10 @@ public:
 	void setGlobalCursor(uint32 cursor);
 	/** FUN_0047df20 / FUN_0047e000: a child's cursor changed. */
 	void childCursorChanged(Child *c);
+	/** (child << 16) | object of the dragged child, 0 for none (FUN_0047e9a0). */
+	int32 whoIsDragged() const;
+	/** FUN_0047f2b0: the child under the mouse, entering/leaving and drag feedback. */
+	void updateHover(int x, int y);
 	const byte *getScreenPalette() const { return _palette; }
 	/** Changes whenever the palette changes. */
 	uint32 getPaletteRevision() const { return _paletteRevision; }
@@ -171,6 +175,7 @@ private:
 		Sprite *sprite;
 		int x, y;
 		int32 savedZ;
+		bool savedVisible;
 	};
 	Common::Array<Attached> _attached;
 

@@ -257,3 +257,17 @@
   timing only (animation phase; in room 57 the original under Wine was still speaking and ignored the click, and
   went to the same bedroom when clicked again). Sound durations checked: our lines end on time (debug level 5
   logs play/done times). Not covered: drag and drop, the magnifier, the inventory, minigames, a playthrough.
+- **Drag and drop (device reports: stuck in the quit dialog with an item; items dropped by mistake).** Compared
+  with the original (new game in both, the hall's matchbox) and an audit of the input code:
+  - object 32000, the input manager (FUN_0047dc00 / FUN_0047e9a0), answers 0x139c "who is dragged"; it didn't
+    exist, so the scripts' guards never fired: Esc opened the quit dialog with an item in hand (the original
+    ignores it), and the dialog's buttons were taken as drops → stuck. Also save/load/toolbar/inventory guards;
+  - detaching from the cursor hides a sprite that was hidden when attached (FUN_0047e2a0): an item's icon going
+    back to the item stayed on screen where the click missed;
+  - the child under the mouse is re-tested every frame (FUN_0047f460), and drop feedback is only sent when it
+    changes (FUN_0047f2b0);
+  - cursors: Graphics::WinCursor keeps transparency in its mask when the backend supports masks; we ignored it,
+    so the hand cursors had a black background.
+  - sounds end after their length when there is no audio output (SDL's fallback mixer never plays).
+  Checked side by side: pick up, drop on the floor, into the bag, out of the bag, Esc while holding, missing the
+  bag: same as the original.

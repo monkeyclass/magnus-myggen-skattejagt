@@ -6,7 +6,12 @@ of the SD card, then put `MM2.DAT`, `MM2.IDX`, the language folder (`DK/`, `N/`,
 `SF/`), `LAB/` and `mm2run.exe` into `App/MagnusMyggen2/game/`. `miyoo/prepare-game.sh`
 does this from the CD or an .iso. Full instructions: [`miyoo/INSTALL-ONION.md`](https://github.com/monkeyclass/magnus-myggen-skattejagt/blob/main/miyoo/INSTALL-ONION.md).
 
-Status (v0.2.5): sprites with an origin are drawn in the right place (e.g. the planets after
+Status (v0.2.6): carrying items works like the original: Esc with an item in hand no longer
+opens the quit dialog (which got you stuck), an item that misses its target goes back without
+leaving its picture behind, the target under the pointer updates without moving it, and the
+hand cursors have no black background. The game no longer hangs when there is no sound output.
+
+v0.2.5: sprites with an origin are drawn in the right place (e.g. the planets after
 opening the chest in the star room), and the remaining small differences found by the audit
 against the original code are fixed. A click on every clickable thing in every room was
 compared with the original (screenshots): no differences left besides timing.

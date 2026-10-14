@@ -43,6 +43,7 @@ enum {
 	kSelf = 0xffff,      ///< target 0xffff: the sending object
 	kGameState = 0x11,   ///< object 17: current room, clock, navigation
 	kSpeech = 0x12,      ///< object 18: subtitles and voice
+	kInputObject = 32000, ///< the input manager: scripts ask it who is being dragged
 	kEngineObject = 0xfffe ///< the engine's own object: global sprites (cursors)
 };
 
