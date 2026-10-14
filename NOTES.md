@@ -271,3 +271,7 @@
   - sounds end after their length when there is no audio output (SDL's fallback mixer never plays).
   Checked side by side: pick up, drop on the floor, into the bag, out of the bag, Esc while holding, missing the
   bag: same as the original.
+- **More checks against the original (2026-10-15):** subtitle text, the options screen (candle), save and load
+  screens (save files now byte-identical, thumbnail the same), the constellation quiz (47: same flow, random
+  constellation), the roof climbing game (46) through the real key path (`pkey:` control): same behaviour. Only
+  cosmetic: our substitute TrueType font sits ~2 px lower than Windows' Arial.

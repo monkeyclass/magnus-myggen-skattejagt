@@ -286,6 +286,15 @@ void IvanoffEngine::runDebugEvent(const char *kind, uint x, uint y, uint32 now) 
 		Anim *a = o ? dynamic_cast<Anim *>(o->getChild(y)) : nullptr;
 		if (a)
 			a->dumpFrames(Common::Path(ConfMan.get("debug_control")).getParent().join(Common::String::format("anim%u_%u_", x, y)).toString());
+	} else if (!strcmp(kind, "pkey")) {
+		// A real key press (ScummVM key code x) through the event queue and
+		// the keymapper.
+		Common::Event e;
+		e.type = Common::EVENT_KEYDOWN;
+		e.kbd = Common::KeyState((Common::KeyCode)x);
+		_system->getEventManager()->pushEvent(e);
+		e.type = Common::EVENT_KEYUP;
+		_system->getEventManager()->pushEvent(e);
 	} else if (!strcmp(kind, "rclick")) {
 		_system->warpMouse(x, y);
 		onMouseMove(x, y);
