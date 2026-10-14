@@ -244,8 +244,13 @@ void GameFiles::saveWorld(Common::Array<byte> &data, uint32 version) {
 	SaveRecords f;
 	int32 v = version;
 	f.writeInts(0, &v, 1);
+	// The world keeps its objects in a CMapWordToPtr; the records follow its
+	// iteration order (as the original's save files show).
+	WordMap<GameObject *> map;
 	for (uint i = 0; i < objs.size(); i++)
-		objs[i]->_vars.save(f);
+		map.at(objs[i]->getId()) = objs[i];
+	for (uint32 p = map.start(); p; p = map.nextPos(p))
+		map.valueAt(p)->_vars.save(f);
 	data = f._bytes;
 }
 
