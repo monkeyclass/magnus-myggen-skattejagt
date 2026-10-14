@@ -1040,9 +1040,10 @@ void Sound::play(int32 p1, int32 p2, int32 p3) {
 
 	// The parameter given at construction is the loop count (FUN_00486c97,
 	// +0x98): 1 plays once, 0 loops forever.
-	if (g_engine->hasVirtualClock()) {
-		uint32 len = audio->getLength().msecs();
-		_endTime = _param == 0 ? 0xffffffff : g_engine->getMillis() + MAX<uint32>(len, 1) * _param;
+	uint32 len = audio->getLength().msecs();
+	_endTime = _param == 0 ? 0xffffffff : g_engine->getMillis() + MAX<uint32>(len, 1) * _param;
+	_timed = g_engine->hasVirtualClock();
+	if (_timed) {
 		delete audio;
 		_playing = true;
 		return;
@@ -1058,7 +1059,7 @@ void Sound::play(int32 p1, int32 p2, int32 p3) {
 
 void Sound::stop() {
 	// FUN_004793a0: stopping doesn't notify.
-	if (_playing && !g_engine->hasVirtualClock())
+	if (_playing && !_timed)
 		g_engine->_mixer->stopHandle(_handle);
 	_playing = false;
 	_visible = false;
@@ -1066,13 +1067,18 @@ void Sound::stop() {
 }
 
 void Sound::setVolume(byte volume) {
-	if (_playing && !g_engine->hasVirtualClock())
+	if (_playing && !_timed)
 		g_engine->_mixer->setChannelVolume(_handle, volume);
 }
 
 bool Sound::isActive() const {
-	if (g_engine->hasVirtualClock())
+	if (_timed)
 		return g_engine->getMillis() < _endTime;
+	// Without audio output (no device: SDL then falls back to a mixer that
+	// never plays) a sound ends after its length, so that the game, which
+	// waits for many sounds, doesn't wait forever.
+	if (_endTime != 0xffffffff && g_engine->getMillis() > _endTime + 500)
+		return false;
 	return g_engine->_mixer->isSoundHandleActive(_handle);
 }
 
@@ -1083,6 +1089,8 @@ bool Sound::isPlaying() const {
 void Sound::update(uint32 now) {
 	if (_playing && !isActive()) {
 		debug(5, "Sound %d: done at %u", _id, now);
+		if (!_timed)
+			g_engine->_mixer->stopHandle(_handle);
 		_playing = false;
 		_visible = false;
 		int32 notify = _notify;
