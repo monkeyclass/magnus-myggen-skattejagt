@@ -1050,6 +1050,7 @@ void Sound::play(int32 p1, int32 p2, int32 p3) {
 	Audio::AudioStream *stream = audio;
 	if (_param != 1)
 		stream = Audio::makeLoopingAudioStream(audio, _param);
+	debug(5, "Sound %d: play at %u, %u ms", _id, g_engine->getMillis(), audio->getLength().msecs());
 	g_engine->_mixer->playStream(Audio::Mixer::kSFXSoundType, &_handle, stream, -1,
 	                             g_engine->getGameVolume(), 0, DisposeAfterUse::YES);
 	_playing = true;
@@ -1081,6 +1082,7 @@ bool Sound::isPlaying() const {
 
 void Sound::update(uint32 now) {
 	if (_playing && !isActive()) {
+		debug(5, "Sound %d: done at %u", _id, now);
 		_playing = false;
 		_visible = false;
 		int32 notify = _notify;

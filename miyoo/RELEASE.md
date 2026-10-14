@@ -6,7 +6,12 @@ of the SD card, then put `MM2.DAT`, `MM2.IDX`, the language folder (`DK/`, `N/`,
 `SF/`), `LAB/` and `mm2run.exe` into `App/MagnusMyggen2/game/`. `miyoo/prepare-game.sh`
 does this from the CD or an .iso. Full instructions: [`miyoo/INSTALL-ONION.md`](https://github.com/monkeyclass/magnus-myggen-skattejagt/blob/main/miyoo/INSTALL-ONION.md).
 
-Status (v0.2.4): doors open and you can leave the hall again; the found "forgotten moments"
+Status (v0.2.5): sprites with an origin are drawn in the right place (e.g. the planets after
+opening the chest in the star room), and the remaining small differences found by the audit
+against the original code are fixed. A click on every clickable thing in every room was
+compared with the original (screenshots): no differences left besides timing.
+
+v0.2.4: doors open and you can leave the hall again; the found "forgotten moments"
 animate; dialogs and the inventory restore the room's colours when they close; cursors over
 clickable things update at once. These come from comparing the engine with the original game
 running under Wine (same save, same clicks, screenshots), room by room, and from an audit of

@@ -253,3 +253,7 @@
   22 sprites with an origin (e.g. the planets of room 22 after opening the chest) were drawn in the wrong place.
   Found with a click sweep against the original (`tools/port/play/clicks.sh`: same save, every clickable target in
   turn, screenshots compared).
+- **Click sweep against the original (all rooms, 180 clicks):** after the fixes above, the remaining differences are
+  timing only (animation phase; in room 57 the original under Wine was still speaking and ignored the click, and
+  went to the same bedroom when clicked again). Sound durations checked: our lines end on time (debug level 5
+  logs play/done times). Not covered: drag and drop, the magnifier, the inventory, minigames, a playthrough.
