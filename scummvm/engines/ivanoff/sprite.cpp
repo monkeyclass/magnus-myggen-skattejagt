@@ -198,6 +198,8 @@ void Sprite::handleCommand(Message &msg) {
 			load();
 		_x += msg.p1;
 		_y += msg.p2;
+		// FUN_00489ab6: and z by p3.
+		_z += msg.p3;
 		break;
 	case kCmdSetClip:
 		debug(2, "Sprite %d: command %d (%d, %d, %d) not implemented", _id, msg.cmd, msg.p1, msg.p2, msg.p3);
@@ -207,8 +209,9 @@ void Sprite::handleCommand(Message &msg) {
 		setView(msg.p1, msg.p2);
 		break;
 	case 0x12:
-		// FUN_00481c80
-		msg.result = scrollTo(msg.p1, msg.p2, msg.p3 == 0);
+		// FUN_00481c80 returns nothing.
+		scrollTo(msg.p1, msg.p2, msg.p3 == 0);
+		msg.result = 0;
 		break;
 	case 0x13:
 		// FUN_00481d00
@@ -284,15 +287,16 @@ void Sprite::setPos(int32 x, int32 y, int32 z) {
 		load();
 	_x = x;
 	_y = y;
-	if (z >= 0)
+	if (z > 0)
 		_z = z;
 }
 
 void Sprite::setZ(int32 z) {
-	// FUN_00481a40
+	// FUN_00481a40 -> frame player FUN_00489570: z only counts if > 0.
 	if (!_loaded)
 		load();
-	_z = z;
+	if (z > 0)
+		_z = z;
 }
 
 Common::Rect Sprite::getBounds() const {
@@ -868,8 +872,15 @@ void Hotspot::handleCommand(Message &msg) {
 	case kCmdHitTest:
 		msg.result = regionCenter(msg.p1, msg.p2);
 		break;
+	case kCmdSetPos:
+	case kCmdSetOffset:
+	case 0x14:
+	case 0x15:
+		// No-ops for hotspots (FUN_004789a0, FUN_0041b900): regions are absolute.
+		break;
 	case kCmdHotspotHit:
-		if (hitTest(msg.p1, msg.p2))
+		// FUN_00478b40: the enable flag and the regions, played or not.
+		if (_shown && anyRegionContains(msg.p1, msg.p2))
 			msg.result = (regionAt(msg.p1, msg.p2) << 16) | 1;
 		else
 			msg.result = 0;

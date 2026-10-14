@@ -209,7 +209,7 @@ public:
 	int32 scrollBy(int32 dx, int32 dy, bool clamp);
 
 protected:
-	int32 _x = 0, _y = 0, _z = 0;
+	int32 _x = 0, _y = 0, _z = 1; ///< FUN_00481230: setPos(0, 0, 1)
 	int32 _originX = 0, _originY = 0;
 	int32 _viewW = 0, _viewH = 0; ///< image +0x70/+0x74 [unverified]
 	int32 _srcX = 0, _srcY = 0;

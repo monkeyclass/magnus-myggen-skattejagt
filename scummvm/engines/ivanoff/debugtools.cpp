@@ -261,6 +261,25 @@ void IvanoffEngine::runDebugEvent(const char *kind, uint x, uint y, uint32 now) 
 			e.type = right ? Common::EVENT_RBUTTONUP : Common::EVENT_LBUTTONUP;
 			_system->getEventManager()->pushEvent(e);
 		}
+	} else if (!strcmp(kind, "targets")) {
+		// The clickable things of the room as the crawl sees them.
+		Common::Array<Sprite *> list;
+		collectSprites(list);
+		for (uint i = 0; i < list.size(); i++) {
+			Sprite *sp = list[i];
+			uint16 owner = sp->getOwner()->getId();
+			if (!(sp->getFlags() & kFlagClick) || (owner >= 8 && owner <= 13))
+				continue;
+			if (Hotspot *h = dynamic_cast<Hotspot *>(sp)) {
+				Common::Array<Common::Point> pts = h->regionPoints();
+				for (uint j = 0; j < pts.size(); j++)
+					debug("target %d.%d %d %d", owner, sp->getId(), pts[j].x, pts[j].y);
+			} else {
+				Common::Rect r = sp->getBounds();
+				if (!r.isEmpty())
+					debug("target %d.%d %d %d", owner, sp->getId(), (r.left + r.right) / 2, (r.top + r.bottom) / 2);
+			}
+		}
 	} else if (!strcmp(kind, "animdump")) {
 		// The frames of child y of object x, next to the control file.
 		GameObject *o = _world->get(x);
