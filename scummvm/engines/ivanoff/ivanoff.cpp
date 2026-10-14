@@ -393,10 +393,13 @@ void IvanoffEngine::applyCursor(uint32 cursor) {
 	uint w = c->getWidth(), h = c->getHeight();
 	const byte *src = c->getSurface();
 	const byte *pal = c->getPalette();
+	// With mask support the decoder keeps transparency in the mask and
+	// leaves the pixels' colours (black) in the image.
+	const byte *mask = c->getMask();
 	byte *buf = new byte[w * h];
 	for (uint i = 0; i < w * h; i++) {
 		byte p = src[i];
-		if (p == c->getKeyColor()) {
+		if (mask ? mask[i] == kCursorMaskTransparent : p == c->getKeyColor()) {
 			buf[i] = 250;
 			continue;
 		}
@@ -419,6 +422,17 @@ void IvanoffEngine::applyCursor(uint32 cursor) {
 			}
 		}
 		buf[i] = best;
+	}
+	if (ConfMan.hasKey("debug_control")) {
+		// Debugging aid: the cursor as given to the backend (250 = transparent).
+		Graphics::Surface dump;
+		dump.init(w, h, w, buf, Graphics::PixelFormat::createFormatCLUT8());
+		byte dumpPal[256 * 3];
+		memcpy(dumpPal, _palette, sizeof(dumpPal));
+		dumpPal[250 * 3] = 255; dumpPal[250 * 3 + 1] = 0; dumpPal[250 * 3 + 2] = 255;
+		Common::DumpFile f;
+		if (f.open(Common::Path(ConfMan.get("debug_control")).getParent().join(Common::String::format("cursor_%08x.png", cursor))))
+			Image::writePNG(f, dump, dumpPal);
 	}
 	CursorMan.replaceCursor(buf, w, h, c->getHotspotX(), c->getHotspotY(), 250);
 	CursorMan.showMouse(true);
