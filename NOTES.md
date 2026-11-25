@@ -303,3 +303,10 @@
   title, loading a save into maze 1, a step forward, quit: as on desktop.
 - Saves can be edited for testing: tools/m2s_edit.py sets any OBJ.VAR (tools/m2s_setroom.py sets the room).
   The base save for the comparison tools is a new game saved in the hall (same bytes from both games).
+- **ARM check under qemu-arm** (tools/port/armrun.sh: the Miyoo build with the toolchain's SDL 1.2/libc): the
+  deterministic runs of all 62 rooms and four 300-click random walks give the same logs as the x86 build, and the
+  frame dumps are identical except two pixels of commas (the toolchain's older FreeType). The only difference
+  found was in the testing aid: the virtual clock was switched on after the game had started its first timers
+  with real time; now before.
+- Click sweeps are timing-dependent: Myggen (flags 0x410) flies around and catches clicks in the original too, so a
+  click that lands on him does nothing in either game. Divergences in a sweep need a replay before they count.

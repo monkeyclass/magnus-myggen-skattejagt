@@ -228,8 +228,9 @@ void IvanoffEngine::runDebugEvent(const char *kind, uint x, uint y, uint32 now) 
 		for (uint i = 0; i < list.size(); i++) {
 			Sprite *sp = list[i];
 			Common::Rect r = sp->getBounds();
-			debug("visible %d.%d type %04x z %d flags %x box %d,%d-%d,%d", sp->getOwner()->getId(), sp->getId(),
-			      sp->getType(), sp->getZ(), sp->getFlags(), r.left, r.top, r.right, r.bottom);
+			debug("visible %d.%d type %04x z %d flags %x box %d,%d-%d,%d shown %d busy %d hit %d", sp->getOwner()->getId(),
+			      sp->getId(), sp->getType(), sp->getZ(), sp->getFlags(), r.left, r.top, r.right, r.bottom, sp->isShown(),
+			      sp->_busy, sp->hitTest(_mouseX, _mouseY));
 		}
 	} else if (!strcmp(kind, "esc")) {
 		onKey(Common::KEYCODE_ESCAPE, 27, true);

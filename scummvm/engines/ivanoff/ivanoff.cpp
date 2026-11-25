@@ -127,6 +127,11 @@ Common::Error IvanoffEngine::run() {
 
 	// The application object starts the game by sending message 1 to
 	// object 17 (FUN_0047b5d0: start object 0x11).
+	// Testing aid: a clock that advances a fixed step per frame. Set before
+	// the game starts, which already starts timers and animations.
+	if (ConfMan.hasKey("virtual_clock"))
+		_virtualStep = MAX(ConfMan.getInt("virtual_clock"), 0);
+
 	Message init(kGameState, 0, kMsgInit);
 	_world->deliver(nullptr, init);
 
@@ -136,9 +141,6 @@ Common::Error IvanoffEngine::run() {
 
 	CursorMan.showMouse(true);
 	applyCursor(0x80000003);
-
-	if (ConfMan.hasKey("virtual_clock"))
-		_virtualStep = MAX(ConfMan.getInt("virtual_clock"), 0);
 
 	while (!shouldQuit()) {
 		Common::Event e;
