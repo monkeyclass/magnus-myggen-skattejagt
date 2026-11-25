@@ -289,3 +289,8 @@
     FUN_00489bf5(0)) sets frame 0 unless paused, and a stopped sprite never is (stop resumes first). We resumed from
     the frame the sprite stopped on, so the second dart started on its last frame and never flew.
   Command 0xf on animations is a no-op in the original (anim → sprite → child dispatcher, all default).
+- Fonts: the Wine reference has no Arial either (it falls back to Liberation), so text comparisons against it only
+  check layout, not glyph shapes. The engine now uses the Windows fonts when they are in the game folder (arial.ttf,
+  arialbd.ttf, ariali.ttf, arialbi.ttf, times*.ttf, copied from a Windows installation), else Liberation.
+- Mazes (40, 42): walked 8 steps through each in both: same views, counters and found key. The videos' colours
+  match with nearest-colour mapping; ScummVM's Cinepak VFW dithering (option video_dither) looks different.

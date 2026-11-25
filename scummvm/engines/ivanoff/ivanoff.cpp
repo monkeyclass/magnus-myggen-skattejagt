@@ -262,23 +262,35 @@ const Graphics::Font *IvanoffEngine::getFont(const Common::String &name, int siz
 	if (_fonts.contains(key))
 		return _fonts[key];
 
-	// Liberation fonts have the metrics of Arial and Times New Roman.
+	// The Windows fonts if they are in the game folder (copied from a
+	// Windows installation, e.g. arial.ttf, arialbd.ttf, times.ttf); else the
+	// Liberation fonts, which have the same metrics.
 	bool serif = name.contains("Times") || name.contains("Roman");
+	static const char *const kWinFonts[2][4] = {
+		{ "arial.ttf", "arialbd.ttf", "ariali.ttf", "arialbi.ttf" },
+		{ "times.ttf", "timesbd.ttf", "timesi.ttf", "timesbi.ttf" }
+	};
+	int variant = (style & 3) == 3 ? 3 : (style & 1) ? 1 : (style & 2) ? 2 : 0;
 	Common::String file = Common::String("Liberation") + (serif ? "Serif" : "Sans") + "-";
-	if ((style & 3) == 3)
-		file += "BoldItalic";
-	else if (style & 1)
-		file += "Bold";
-	else if (style & 2)
-		file += "Italic";
-	else
-		file += "Regular";
+	static const char *const kVariants[4] = { "Regular", "Bold", "Italic", "BoldItalic" };
+	file += kVariants[variant];
 	file += ".ttf";
 
 	Graphics::Font *font = nullptr;
 #ifdef USE_FREETYPE2
-	font = Graphics::loadTTFFontFromArchive(file, px, Graphics::kTTFSizeModeCharacter, 0, 0,
-	                                        Graphics::kTTFRenderModeMonochrome);
+	Common::File *win = new Common::File();
+	if (win->open(Common::Path(kWinFonts[serif ? 1 : 0][variant]))) {
+		// The font keeps the stream (and frees it).
+		font = Graphics::loadTTFFont(win, DisposeAfterUse::YES, px, Graphics::kTTFSizeModeCharacter, 0, 0,
+		                             Graphics::kTTFRenderModeMonochrome);
+		if (font)
+			debug(1, "Font %s: %s", key.c_str(), kWinFonts[serif ? 1 : 0][variant]);
+	} else {
+		delete win;
+	}
+	if (!font)
+		font = Graphics::loadTTFFontFromArchive(file, px, Graphics::kTTFSizeModeCharacter, 0, 0,
+		                                        Graphics::kTTFRenderModeMonochrome);
 #endif
 	if (!font) {
 		warning("Can't load %s; using the GUI font", file.c_str());
