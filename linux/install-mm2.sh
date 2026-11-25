@@ -106,6 +106,14 @@ echo "Enabling a 640x480 virtual desktop for this prefix ..."
 run reg add 'HKCU\Software\Wine\Explorer' /v Desktop /t REG_SZ /d Default /f >/dev/null 2>&1
 run reg add 'HKCU\Software\Wine\Explorer\Desktops' /v Default /t REG_SZ /d 640x480 /f >/dev/null 2>&1
 
+# The game asks for Arial and Times New Roman; without them Wine falls back to
+# a sans font for everything. Map them to the metric-compatible Liberation
+# fonts if those are installed (fonts-liberation).
+echo "Mapping Arial and Times New Roman to the Liberation fonts ..."
+for f in "Arial:Liberation Sans" "Times New Roman:Liberation Serif" "Courier New:Liberation Mono"; do
+	run reg add 'HKCU\Software\Wine\Fonts\Replacements' /v "${f%%:*}" /t REG_SZ /d "${f#*:}" /f >/dev/null 2>&1
+done
+
 # Wine's winmm and Cinepak decoder can't play the labyrinth videos (black
 # screen); load the fixed copies from the game folder for this game only.
 if [ "$winefix" = 1 ]; then
