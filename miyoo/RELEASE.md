@@ -6,7 +6,14 @@ of the SD card, then put `MM2.DAT`, `MM2.IDX`, the language folder (`DK/`, `N/`,
 `SF/`), `LAB/` and `mm2run.exe` into `App/MagnusMyggen2/game/`. `miyoo/prepare-game.sh`
 does this from the CD or an .iso. Full instructions: [`miyoo/INSTALL-ONION.md`](https://github.com/monkeyclass/magnus-myggen-skattejagt/blob/main/miyoo/INSTALL-ONION.md).
 
-Status (v0.2.6): carrying items works like the original: Esc with an item in hand no longer
+Status (v0.2.7): the darts game works (holding a button or key repeats like a Windows key,
+which the game uses for the throw strength and aiming; a second dart used to get stuck), text
+has the original's size (it was one pixel too big, so lines broke differently), and the
+original's Windows fonts are used if you copy them into the game folder (see the install
+guide). Compared with the original game, side by side: both mazes, the darts, the planet book,
+the periodic table, the quiz, the roof game and the saved games (byte-identical).
+
+v0.2.6: carrying items works like the original: Esc with an item in hand no longer
 opens the quit dialog (which got you stuck), an item that misses its target goes back without
 leaving its picture behind, the target under the pointer updates without moving it, and the
 hand cursors have no black background. The game no longer hangs when there is no sound output.

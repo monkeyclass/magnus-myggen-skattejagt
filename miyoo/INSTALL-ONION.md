@@ -53,6 +53,10 @@ By hand: copy `MM2.DAT`, `MM2.IDX`, the language folder (`DK/` …) and `LAB/` f
 the CD into `game/`, and `mm2run.exe` from an installed copy
 (`C:\Program Files\Magnus2`).
 
+Optional: for text exactly as on Windows, also copy Windows' Arial and Times New Roman
+fonts into `game/` (`arial.ttf`, `arialbd.ttf`, `times.ttf`, `timesbd.ttf` from
+`C:\Windows\Fonts`). Without them the game uses look-alike fonts with the same sizes.
+
 ## 3. Copy to the SD card
 
 Copy `dist/App/MagnusMyggen2` to `App/` on the SD card. It appears in Onion's
