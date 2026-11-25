@@ -9,7 +9,7 @@ while read id x y; do
   i=$((i+1))
   xdotool mousemove $x $y; sleep 0.3; xdotool mousedown 1; sleep 0.15; xdotool mouseup 1
   echo pclick:$x,$y >> $P/ctl
-  sleep 4.5
+  sleep ${WAIT:-4.5}
   import -window root -crop 640x480+0+0 $d/co$i.png; echo shot:$((100+i)) >> $P/ctl; sleep 0.5
   mv $P/shot$((100+i)).png $d/cn$i.png 2>/dev/null
   echo "$i $id $x,$y"

@@ -310,3 +310,11 @@
   with real time; now before.
 - Click sweeps are timing-dependent: Myggen (flags 0x410) flies around and catches clicks in the original too, so a
   click that lands on him does nothing in either game. Divergences in a sweep need a replay before they count.
+- **State comparison against the original (tools/port/play/saveall.sh):** per room, the same save loaded in both,
+  every clickable target clicked, then a save made through the game's menu in both and the save records diffed.
+  29 rooms: identical saves (one shuffled quiz order differs: random). Every difference found traced back to timing
+  under Wine (the original's speech runs late, so it still blocks the menu or a click; Myggen flying in front of a
+  hotspot), and went away with longer waits (WAIT=9 SAVEWAIT=12). The original crashed once under Wine (studded
+  door, room 23); not reproducible.
+- Speed estimate: ~1 ms per frame on the development machine with debug logging (maze videos worst); the Miyoo's
+  Cortex-A7 is perhaps 15-25x slower, which fits in a frame, but only the device can tell.
