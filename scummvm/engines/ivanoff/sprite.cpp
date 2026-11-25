@@ -29,6 +29,7 @@
 #include "graphics/fonts/ttf.h"
 #include "graphics/fontman.h"
 #include "video/avi_decoder.h"
+#include "common/config-manager.h"
 #include "common/file.h"
 #include "image/png.h"
 #include "video/flic_decoder.h"
@@ -515,6 +516,7 @@ Video::VideoDecoder *Anim::openDecoder() {
 }
 
 const Graphics::Surface *Anim::nextFrame() {
+	beforeDecode();
 	const Graphics::Surface *s = _decoder->decodeNextFrame();
 	// The FLC decoder collects the changed areas of every frame until they
 	// are cleared; nothing here uses them.
@@ -1332,6 +1334,16 @@ void TextSprite::render() {
 
 // --- VideoSprite (FUN_0047af30) ---
 
+void VideoSprite::beforeDecode() {
+	if (_dithered || !_decoder)
+		return;
+	_dithered = true;
+	byte pal[256 * 3];
+	memcpy(pal, g_engine->getScreenPalette(), sizeof(pal));
+	if (!ConfMan.getBool("video_dither") || !_decoder->setDitheringPalette(pal))
+		debug(2, "VideoSprite %d: frames are mapped to the palette", _id);
+}
+
 void VideoSprite::convertFrame(const Graphics::Surface &src, Graphics::Surface &dst) {
 	if (src.format.bytesPerPixel == 1) {
 		dst.copyFrom(src);
@@ -1413,9 +1425,10 @@ Video::VideoDecoder *VideoSprite::openDecoder() {
 		delete dec;
 		return nullptr;
 	}
-	// The original dithers to the palette set when the video starts; here
-	// frames are mapped to the palette of the moment (convertFrame), since
-	// rooms set their palette after loading the videos.
+	// The original has ICDecompress write 8-bit frames: Windows' Cinepak
+	// dithers to the palette (VFW dithering, beforeDecode); rooms set their
+	// palette after loading the videos, so it is chosen at the first frame.
+	_dithered = false;
 	uint32 frames = dec->getFrameCount();
 	_period = frames ? dec->getDuration().msecs() / frames : 66;
 	if (_period == 0)

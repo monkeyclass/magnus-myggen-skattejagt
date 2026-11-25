@@ -284,6 +284,8 @@ protected:
 	virtual Video::VideoDecoder *openDecoder();
 	/** The decoder's next frame. */
 	const Graphics::Surface *nextFrame();
+	/** Called before each decoded frame (videos choose their dithering). */
+	virtual void beforeDecode() {}
 	/** Opens the decoder and decodes or caches the frames; sets _loaded. */
 	void loadFrames();
 	void releaseFrames();
@@ -452,9 +454,11 @@ public:
 protected:
 	Video::VideoDecoder *openDecoder() override;
 	void convertFrame(const Graphics::Surface &src, Graphics::Surface &dst) override;
+	void beforeDecode() override;
 
 private:
 	Common::String _file;
+	bool _dithered = false;
 	Common::Array<int16> _lut;
 	uint32 _lutRevision = 0;
 };

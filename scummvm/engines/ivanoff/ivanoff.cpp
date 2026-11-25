@@ -104,6 +104,9 @@ Common::String IvanoffEngine::getLanguageDir() const {
 }
 
 Common::Error IvanoffEngine::run() {
+	// Labyrinth videos: nearest colour of the palette (default) or Windows'
+	// Cinepak VFW dithering. [unverified] which the real Windows decoder does.
+	ConfMan.registerDefault("video_dither", false);
 	initGraphics(640, 480);
 	_screen.create(640, 480, Graphics::PixelFormat::createFormatCLUT8());
 	initPalette();
