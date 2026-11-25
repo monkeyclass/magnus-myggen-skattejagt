@@ -147,6 +147,14 @@ private:
 	void onMouseMove(int x, int y);
 	void onButton(int x, int y, bool down, bool right);
 	void onKey(int keycode, int ascii, bool down);
+	void gameKey(int vk, int ascii, bool down);
+	void repeatKeys(uint32 now);
+	enum { kKeyRepeatDelay = 500, kKeyRepeatPeriod = 33 };
+	struct HeldKey {
+		int vk, ascii;
+		uint32 next;
+	};
+	Common::Array<HeldKey> _heldKeys;
 	static int virtualKey(int keycode);
 
 	const ADGameDescription *_gameDescription;

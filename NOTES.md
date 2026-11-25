@@ -275,3 +275,17 @@
   screens (save files now byte-identical, thumbnail the same), the constellation quiz (47: same flow, random
   constellation), the roof climbing game (46) through the real key path (`pkey:` control): same behaviour. Only
   cosmetic: our substitute TrueType font sits ~2 px lower than Windows' Arial.
+- **2026-11-25: new container** (all of /home/user except the repository was gone). Rebuilt: ScummVM master +
+  engine, game data from archive.org, the original under Wine. Wine 9.0 from Ubuntu crashes at start
+  ("free(): invalid pointer" in ntdll's init) with this session's environment; it runs with `env -i PATH=… HOME=…`
+  (one of the session's environment variables trips it). The scripts in tools/port/play now start it that way.
+- **Darts (object 30, room 0x1c = 28): two engine bugs, found by playing it in both.**
+  - Keyboard auto-repeat: the game counts WM_KEYDOWN repeats while space is held (throw strength) and while an arrow
+    is held (aim). Buttons and keymapped keys don't repeat, so on the Miyoo a throw had no strength. The engine now
+    repeats held game keys itself with Windows' default timing (500 ms, then ~30/s) and ignores backend repeats.
+    The original under Wine gets fewer repeats (Windows merges repeats when the program falls behind), so its throws
+    are weaker for the same hold; the strength depends on machine speed in the original too.
+  - Play rewinds: inserting a frame player into the display (FUN_004863e4 → slot +4 FUN_004891c8 →
+    FUN_00489bf5(0)) sets frame 0 unless paused, and a stopped sprite never is (stop resumes first). We resumed from
+    the frame the sprite stopped on, so the second dart started on its last frame and never flew.
+  Command 0xf on animations is a no-op in the original (anim → sprite → child dispatcher, all default).

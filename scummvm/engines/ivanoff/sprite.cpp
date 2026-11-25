@@ -676,6 +676,11 @@ void Anim::play(int32 p1, int32 p2, int32 p3) {
 	if (!_loaded || _visible)
 		return;
 
+	// Inserting the frame player into the display (FUN_004863e4 -> slot +4,
+	// FUN_004891c8) rewinds it (FUN_00489bf5(0)) unless it is paused, which a
+	// stopped sprite never is; a frame set while hidden (command 0x26)
+	// applies after that.
+	gotoFrame(0);
 	if (_pendingFrame != 0) {
 		gotoFrame(_pendingFrame);
 		_pendingFrame = 0;

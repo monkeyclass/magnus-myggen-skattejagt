@@ -154,7 +154,9 @@ Common::Error IvanoffEngine::run() {
 				onButton(e.mouse.x, e.mouse.y, true, true);
 				break;
 			case Common::EVENT_KEYDOWN:
-				onKey(e.kbd.keycode, e.kbd.ascii, true);
+				// The engine makes its own repeats (gameKey), also for buttons.
+				if (!e.kbdRepeat)
+					onKey(e.kbd.keycode, e.kbd.ascii, true);
 				break;
 			case Common::EVENT_KEYUP:
 				onKey(e.kbd.keycode, e.kbd.ascii, false);
@@ -163,9 +165,7 @@ Common::Error IvanoffEngine::run() {
 			case Common::EVENT_CUSTOM_ENGINE_ACTION_END: {
 				// A key of the keymap: customType is the virtual key code.
 				int vk = e.customType;
-				Message m(kSelf, 0, e.type == Common::EVENT_CUSTOM_ENGINE_ACTION_START ? kMsgKeyDown : kMsgKeyUp,
-				          vk, vk == 0x20 || vk == 0x1b ? vk : 0);
-				_world->deliverFiltered(m);
+				gameKey(vk, vk == 0x20 || vk == 0x1b ? vk : 0, e.type == Common::EVENT_CUSTOM_ENGINE_ACTION_START);
 				break;
 			}
 			default:
@@ -176,6 +176,7 @@ Common::Error IvanoffEngine::run() {
 		if (_virtualStep)
 			_virtualTime += _virtualStep;
 		uint32 now = getMillis();
+		repeatKeys(now);
 		runDebugEvents(now);
 		// FUN_0047f460 (each frame): the child under a still mouse can change.
 		updateHover(_mouseX, _mouseY);
@@ -674,9 +675,47 @@ void IvanoffEngine::onButton(int x, int y, bool down, bool right) {
 }
 
 void IvanoffEngine::onKey(int keycode, int ascii, bool down) {
+	gameKey(virtualKey(keycode), ascii, down);
+}
+
+void IvanoffEngine::gameKey(int vk, int ascii, bool down) {
 	// FUN_0047f940 / FUN_0047f9c0: p1 is the Windows virtual key code.
-	Message m(kSelf, 0, down ? kMsgKeyDown : kMsgKeyUp, virtualKey(keycode), ascii);
+	// Windows repeats WM_KEYDOWN while a key is held, and the game relies
+	// on it (the darts' throw strength, moving with the arrows); buttons and
+	// keymapped keys don't repeat, so the repeats are made here with
+	// Windows' default timing (500 ms, then about 30 a second).
+	Message m(kSelf, 0, down ? kMsgKeyDown : kMsgKeyUp, vk, ascii);
 	_world->deliverFiltered(m);
+	if (down) {
+		HeldKey k;
+		k.vk = vk;
+		k.ascii = ascii;
+		k.next = getMillis() + kKeyRepeatDelay;
+		for (uint i = 0; i < _heldKeys.size(); i++)
+			if (_heldKeys[i].vk == vk) {
+				_heldKeys[i] = k;
+				return;
+			}
+		_heldKeys.push_back(k);
+	} else {
+		for (uint i = 0; i < _heldKeys.size(); i++)
+			if (_heldKeys[i].vk == vk) {
+				_heldKeys.remove_at(i);
+				return;
+			}
+	}
+}
+
+void IvanoffEngine::repeatKeys(uint32 now) {
+	for (uint i = 0; i < _heldKeys.size(); i++) {
+		while (now >= _heldKeys[i].next) {
+			_heldKeys[i].next += kKeyRepeatPeriod;
+			Message m(kSelf, 0, kMsgKeyDown, _heldKeys[i].vk, _heldKeys[i].ascii);
+			_world->deliverFiltered(m);
+			if (i >= _heldKeys.size())
+				return;
+		}
+	}
 }
 
 int IvanoffEngine::virtualKey(int keycode) {
