@@ -257,7 +257,9 @@ void IvanoffEngine::setGlobal(uint32 addr, int32 value) {
 
 const Graphics::Font *IvanoffEngine::getFont(const Common::String &name, int size, int style) {
 	// FUN_0048b9f0: CFont::CreatePointFont(size, name) with bold/italic bits.
-	int px = MAX(1, (size * 96 + 360) / 720);
+	// CreatePointFontIndirect: height = -(LOGPIXELSY * size / 720), truncated
+	// (8 pt is 10 pixels at 96 dpi).
+	int px = MAX(1, size * 96 / 720);
 	Common::String key = Common::String::format("%s/%d/%d", name.c_str(), px, style & 3);
 	if (_fonts.contains(key))
 		return _fonts[key];

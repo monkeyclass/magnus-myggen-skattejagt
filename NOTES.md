@@ -294,3 +294,8 @@
   arialbd.ttf, ariali.ttf, arialbi.ttf, times*.ttf, copied from a Windows installation), else Liberation.
 - Mazes (40, 42): walked 8 steps through each in both: same views, counters and found key. The videos' colours
   match with nearest-colour mapping; ScummVM's Cinepak VFW dithering (option video_dither) looks different.
+- **Font sizes were one pixel too big.** CreatePointFontIndirect computes the height as LOGPIXELSY × size / 720
+  with truncation (8 pt = 10 px); we rounded (11 px). Text was ~15% wider (different line breaks in the planet book)
+  and sat lower. Found by comparing the planet book of room 22 after mapping Wine's font names to Liberation
+  (HKCU\Software\Wine\Fonts\Replacements: Arial, Times New Roman, Courier New); without that, Wine draws
+  "Times New Roman" with a sans fallback and is a misleading reference. Now the same line breaks and positions.
