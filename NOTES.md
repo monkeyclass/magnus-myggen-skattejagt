@@ -299,3 +299,7 @@
   and sat lower. Found by comparing the planet book of room 22 after mapping Wine's font names to Liberation
   (HKCU\Software\Wine\Fonts\Replacements: Arial, Times New Roman, Courier New); without that, Wine draws
   "Times New Roman" with a sans fallback and is a misleading reference. Now the same line breaks and positions.
+- **v0.2.7 ARM build checked under qemu-arm** (release zip, Miyoo toolchain sysroot for SDL 1.2 and libc):
+  title, loading a save into maze 1, a step forward, quit: as on desktop.
+- Saves can be edited for testing: tools/m2s_edit.py sets any OBJ.VAR (tools/m2s_setroom.py sets the room).
+  The base save for the comparison tools is a new game saved in the hall (same bytes from both games).
